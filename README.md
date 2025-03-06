@@ -2,6 +2,10 @@
 
 An Electron-based developer tool for Lynx, providing mobile debugging features.
 
+<div align="center">
+    <img src="https://lynxjs.org/assets/doc/debugging-panel-elements.png" />
+</div>
+
 ## Project Structure
 
 ``` plantext
