@@ -3,7 +3,7 @@
 An Electron-based developer tool for Lynx, providing mobile debugging features.
 
 <div align="center">
-    <img src="https://lynxjs.org/assets/doc/debugging-panel-elements.png" />
+    <img src="https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/lynx-website/assets/doc/debugging-panel-console.png" />
 </div>
 
 ## Project Structure
