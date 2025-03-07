@@ -62,8 +62,8 @@ pnpm -v  # Should display 7.33.6
 1. Clone repository and switch to development branch:
 
 ```bash
-git clone git@github.com:lynx-dev/lynx-devtool.git
-cd devtool
+git clone git@github.com:lynx-family/lynx-devtool.git --depth=1
+cd lynx-devtool
 ```
 
 2. Sync DevTools dependencies and build it:
@@ -83,6 +83,17 @@ pnpm install
 ```bash
 pnpm run dev
 ```
+
+## Using Makefile
+
+```bash
+make setup
+make build
+make install
+make dev
+```
+
+or just call `make all`
 
 ## Tech Stack
 
