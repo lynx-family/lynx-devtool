@@ -1,6 +1,18 @@
-# Lynx DevTool
+<div align="center">
+
+<p>
+  <a href="https://lynxjs.org/guide/debugging/lynx-devtool.htm">
+    <img width="500" alt="Devtool logo" src=".github/splash.png" />
+  </a>
+</p>
+
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.txt)
 
 An Electron-based developer tool for Lynx, providing mobile debugging features.
+
+</div>
+
+## Overview
 
 <div align="center">
     <img src="https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/lynx-website/assets/doc/debugging-panel-console.png" />
