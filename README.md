@@ -50,7 +50,7 @@ pnpm -v  # Should display 7.33.6
 1. Clone repository and switch to development branch:
 
 ```bash
-git clone git@github.com:lynx-dev/lynx-devtool.git
+git clone https://github.com/lynx-family/lynx-devtool.git
 cd devtool
 ```
 
@@ -81,7 +81,7 @@ pnpm run dev
 
 ## Contributing
 
-1. Fork this repository
+https://github.com/lynx-family/lynx-devtool.githttps://github.com/lynx-family/lynx-devtool.git1. Fork this repository
 2. Create feature branch
 3. Commit changes
 4. Create Pull Request
