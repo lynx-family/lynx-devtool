@@ -50,7 +50,7 @@ pnpm -v  # Should display 7.33.6
 1. Clone repository and switch to development branch:
 
 ```bash
-git clone https://github.com/lynx-family/lynx-devtool.git
+git clone https://github.com/lynx-family/lynx-devtool
 cd devtool
 ```
 
