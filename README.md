@@ -81,7 +81,7 @@ pnpm run dev
 
 ## Contributing
 
-https://github.com/lynx-family/lynx-devtool.githttps://github.com/lynx-family/lynx-devtool.git1. Fork this repository
+1. Fork this repository
 2. Create feature branch
 3. Commit changes
 4. Create Pull Request
