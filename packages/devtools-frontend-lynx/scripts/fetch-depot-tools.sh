@@ -100,7 +100,7 @@ EOF
 # depot_tools 安装
 if [ ! -d "$depot_tools_path" ]; then
   echo "Downloading depot_tools..."
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$depot_tools_path"
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$depot_tools_path" --depth=1
   echo "depot_tools downloaded successfully to: $depot_tools_path"
 else
   echo "depot_tools already exists at: $depot_tools_path"
