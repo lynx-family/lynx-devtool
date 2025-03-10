@@ -230,7 +230,7 @@ hooks = [
   {
     'name': 'sysroot_x64',
     'pattern': '.',
-    'condition': 'checkout_linux and checkout_x64',
+    'condition': 'host_os == "linux" and checkout_linux and checkout_x64',
     'action': ['python', 'build/linux/sysroot_scripts/install-sysroot.py',
                '--arch=x64'],
   },
