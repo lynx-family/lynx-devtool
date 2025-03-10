@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "tsc && npm run unzipResources",
+    "build": "tsc && pnpm run unzipResources",
     "start": "bash scripts/start.sh cli",
     "start:cli": "bash scripts/start.sh cli",
     "start:cli:debug": "node bin/ldt.js start --upgradeChannel debug --debug true",
