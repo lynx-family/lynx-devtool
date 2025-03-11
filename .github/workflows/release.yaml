@@ -53,7 +53,7 @@ jobs:
             - This is a pre-release version for testing purposes only
             - Not recommended for production use' || github.ref }}
 
-  build-and-upload:
+  build-and-upload-mac:
     needs: create-release
     runs-on: lynx-family-darwin-cert
     strategy:
@@ -180,3 +180,95 @@ jobs:
           asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
           asset_name: ${{ steps.find_dmg.outputs.dmg_filename }}
           asset_content_type: application/x-apple-diskimage
+
+  build-and-upload-windows:
+    needs: create-release
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.20.2
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 7.33.6
+          
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Fetch depot_tools
+        shell: bash
+        run: pnpm run fetch:depot_tools
+      
+      - name: Add depot_tools to PATH
+        shell: bash
+        run: |
+          echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
+          
+      - name: Sync devtools-gn
+        shell: bash
+        run: pnpm run sync:devtools-gn
+
+      - name: Build devtools
+        shell: bash
+        run: pnpm run build:devtools
+
+      - name: Sync devtools-dist
+        shell: bash
+        run: pnpm run sync:devtools-dist
+
+      - name: Build all packages
+        run: pnpm run build:all
+
+      - name: Build Windows installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run production:win-x64
+
+      - name: Find Windows installer
+        id: find_installer
+        shell: powershell
+        run: |
+          $installer = Get-ChildItem -Path "./dist" -Recurse -Filter "*.exe" | Select-Object -First 1
+          if (-not $installer) {
+            Write-Error "Installer not found"
+            exit 1
+          }
+          $installerPath = $installer.FullName
+          $installerName = $installer.Name
+          Write-Output "Found installer at: $installerPath"
+          "installer_path=$installerPath" >> $env:GITHUB_OUTPUT
+          "installer_name=$installerName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.find_installer.outputs.installer_path }}
+          asset_name: ${{ steps.find_installer.outputs.installer_name }}
+          asset_content_type: application/octet-stream

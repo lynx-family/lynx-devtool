@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-linux:
     strategy:
       matrix:
         os: [lynx-ubuntu-22.04-avd-large]
@@ -67,6 +67,77 @@ jobs:
           echo "build:devtools done"
 
       - name: Sync devtools-dist
+        run: |
+          pnpm run sync:devtools-dist
+          echo "sync:devtools-dist done"
+
+      - name: Build all packages
+        run: |
+          pnpm run build:all
+          echo "build:all done"
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Python Setup
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.20.2
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 7.33.6
+          
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Fetch depot_tools
+        shell: bash
+        run: |
+          pnpm run fetch:depot_tools
+          echo "fetch:depot_tools done"
+
+      - name: Add depot_tools to PATH
+        shell: bash
+        run: |
+          echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
+          
+      - name: Sync devtools-gn
+        shell: bash
+        run: |
+          pnpm run sync:devtools-gn
+          echo "sync:devtools-gn done"
+      
+      - name: Build devtools-gn
+        shell: bash
+        run: |
+          pnpm run build:devtools
+          echo "build:devtools done"
+
+      - name: Sync devtools-dist
+        shell: bash
         run: |
           pnpm run sync:devtools-dist
           echo "sync:devtools-dist done"
