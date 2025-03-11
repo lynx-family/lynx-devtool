@@ -10,7 +10,7 @@ permissions:
   
 jobs:
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: lynx-ubuntu-22.04-avd-large
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_type: ${{ steps.release_type.outputs.RELEASE_TYPE }}
@@ -53,16 +53,17 @@ jobs:
             - This is a pre-release version for testing purposes only
             - Not recommended for production use' || github.ref }}
 
-  build-and-upload-mac:
+  build-and-upload:
     needs: create-release
-    runs-on: macos-latest
+    runs-on: lynx-family-darwin-cert
     strategy:
       matrix:
         arch: [arm64, x64]
     
     steps:
       - uses: actions/checkout@v3
-      
+
+      # Node and pnpm setup steps
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -86,156 +87,96 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
             
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          
       - name: Install dependencies
         run: pnpm install
 
       - name: Fetch depot_tools
-        shell: bash
         run: pnpm run fetch:depot_tools
-      
-      - name: Add depot_tools to PATH
-        shell: bash
-        run: |
-          echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
-          
-      - name: Sync devtools-gn
-        shell: bash
-        run: pnpm run sync:devtools-gn
 
-      - name: Build devtools
-        shell: bash
+      - name: ln Python
+        run: ln -s `which python3` /usr/local/bin/python
+
+      - name: Sync devtools-gn
+        run: |
+          export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH
+          pnpm run sync:devtools-gn
+
+      - name: Build devtools-gn
         run: pnpm run build:devtools
 
       - name: Sync devtools-dist
-        shell: bash
         run: pnpm run sync:devtools-dist
 
       - name: Build all packages
         run: pnpm run build:all
 
-      - name: Build Mac installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run production:mac
-
-      - name: Find Mac installer
-        id: find_installer
-        shell: bash
+      # Only upload frontend once (in arm64 job)
+      - name: Find and Upload Frontend
+        if: matrix.arch == 'arm64'
         run: |
-          installer=$(find ./dist -name "*.dmg" -print -quit)
-          if [ -z "$installer" ]; then
-            echo "Installer not found"
+          ARCHIVE_PATH=$(find ./packages/devtools-frontend-lynx/output -name "devtool.frontend.lynx_1.0.*.tar.gz" | head -n 1)
+          if [ -z "$ARCHIVE_PATH" ]; then
+            echo "Error: Frontend archive not found"
             exit 1
           fi
-          installer_path=$(realpath "$installer")
-          installer_name=$(basename "$installer")
-          echo "Found installer at: $installer_path"
-          echo "installer_path=$installer_path" >> $GITHUB_OUTPUT
-          echo "installer_name=$installer_name" >> $GITHUB_OUTPUT
+          echo "Found archive at: ${ARCHIVE_PATH}"
+          
+          curl \
+            -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @"${ARCHIVE_PATH}" \
+            "${{ needs.create-release.outputs.upload_url }}?name=devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
 
-      - name: Upload Mac installer
-        uses: actions/upload-release-asset@v1
+      - name: Install Apple Certificate
+        if: matrix.arch == 'arm64' || matrix.arch == 'x64'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_installer.outputs.installer_path }}
-          asset_name: ${{ steps.find_installer.outputs.installer_name }}
-          asset_content_type: application/octet-stream
-
-  build-and-upload-windows:
-    needs: create-release
-    runs-on: windows-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.20.2
-          
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 7.33.6
-          
-      - name: Get pnpm store directory
-        shell: bash
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-            
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Fetch depot_tools
-        shell: bash
-        run: pnpm run fetch:depot_tools
-      
-      - name: Add depot_tools to PATH
-        shell: bash
-        run: |
-          echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           
-      - name: Sync devtools-gn
-        shell: bash
-        run: pnpm run sync:devtools-gn
+          security import certificate.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          
+          rm certificate.p12
 
-      - name: Build devtools
-        shell: bash
-        run: pnpm run build:devtools
-
-      - name: Sync devtools-dist
-        shell: bash
-        run: pnpm run sync:devtools-dist
-
-      - name: Build all packages
-        run: pnpm run build:all
-
-      - name: Build Windows installer
+      # Build and upload platform-specific DMG
+      - name: Build ${{ matrix.arch }} version
         env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run production:win-x64
+          CSC_IDENTITY_AUTO_DISCOVERY: true
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: pnpm run production:mac-${{ matrix.arch }}
 
-      - name: Find Windows installer
-        id: find_installer
-        shell: powershell
+      - name: Find DMG Path
+        id: find_dmg
         run: |
-          $installer = Get-ChildItem -Path "./dist" -Recurse -Filter "*.exe" | Select-Object -First 1
-          if (-not $installer) {
-            Write-Error "Installer not found"
+          DMG_PATH=$(find ./dist -name "*.dmg" | head -n 1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "Error: DMG file not found"
             exit 1
-          }
-          $installerPath = $installer.FullName
-          $installerName = $installer.Name
-          Write-Output "Found installer at: $installerPath"
-          "installer_path=$installerPath" >> $env:GITHUB_OUTPUT
-          "installer_name=$installerName" >> $env:GITHUB_OUTPUT
+          fi
+          DMG_FILENAME=$(basename "$DMG_PATH")
+          echo "Found DMG at: ${DMG_PATH}"
+          echo "dmg_path=${DMG_PATH}" >> $GITHUB_OUTPUT
+          echo "dmg_filename=${DMG_FILENAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload Windows installer
+      - name: Upload ${{ matrix.arch }} DMG
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_installer.outputs.installer_path }}
-          asset_name: ${{ steps.find_installer.outputs.installer_name }}
-          asset_content_type: application/octet-stream
+          asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
+          asset_name: ${{ steps.find_dmg.outputs.dmg_filename }}
+          asset_content_type: application/x-apple-diskimage
