@@ -22,5 +22,5 @@ then
   $CMD_RUN_CLI
 elif [ "$RUN_MODE" == "cli+pc" ]
 then
-  concurrently "emo run wait && $CMD_RUN_CLI --debug true" "cd $PATH_LDT_PC && npm run start:offline" 
+  concurrently "emo run wait && $CMD_RUN_CLI --debug true" "cd $PATH_LDT_PC && pnpm run start:offline" 
 fi
