@@ -24,7 +24,10 @@
     "production:mac-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --x64",
     "production:win-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win --x64",
     "production:win-ia32": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win --ia32",
-    "production:win": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win"
+    "production:win": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win",
+    "production:linux": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --linux",
+    "production:linux-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --linux --x64",
+    "production":"pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder -mwl"
   },
   "author": "lynx",
   "license": "Apache-2.0",
