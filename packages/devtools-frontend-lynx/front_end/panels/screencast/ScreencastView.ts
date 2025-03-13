@@ -125,6 +125,7 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
   _navigationProgressBar?: ProgressTracker;
   _historyIndex?: number;
   _historyEntries?: Protocol.Page.NavigationEntry[];
+  _navigationScreenSwitch?: HTMLInputElement;
   _navigationScreenCastModeSwitch?: HTMLInputElement;
   constructor(screenCaptureModel: SDK.ScreenCaptureModel.ScreenCaptureModel) {
     super();
@@ -222,7 +223,7 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
     const maxImageDimension = 2048;
     dimensions.width *= window.devicePixelRatio;
     dimensions.height *= window.devicePixelRatio;
-    const qualityValue = (!localStorage.getItem('isHD') || localStorage.getItem('isHD') === 'false') ? 20 : 80;
+    const qualityValue = (!localStorage.getItem('isHD') || localStorage.getItem('isHD') === 'false') ? 20 : 100;
     // Note: startScreencast width and height are expected to be integers so must be floored.
     let format = Protocol.Page.StartScreencastRequestFormat.Jpeg;
     let maxWidth = Math.floor(Math.min(maxImageDimension, dimensions.width));
@@ -709,11 +710,21 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
     let tmp0 = document.createTextNode('Reload');
     reloadText.appendChild(tmp0);
 
+    const spanValue = this._navigationBar.createChild('span', 'title-heigh');
+    spanValue.appendChild(document.createTextNode('SD'));
+    this._navigationScreenSwitch = UI.UIUtils.createInput('switch-component', 'checkbox') as HTMLInputElement;
+    this._navigationScreenSwitch.style.marginLeft = '19px';
+    this._navigationScreenSwitch.checked = localStorage.getItem('isHD') === 'true';
+    spanValue.appendChild(this._navigationScreenSwitch);
+    const spanValue2 = this._navigationBar.createChild('span', 'title-low');
+    spanValue2.appendChild(document.createTextNode('HD'));
+
     const screencastModeLynx = this._navigationBar.createChild('span', 'title-heigh');
+    screencastModeLynx.style.marginLeft = '10px';
     screencastModeLynx.appendChild(document.createTextNode('LynxView'));
     this._navigationScreenCastModeSwitch = UI.UIUtils.createInput('switch-component', 'checkbox') as HTMLInputElement;
     this._navigationScreenCastModeSwitch.checked = Common.Settings.Settings.instance().createSetting<string>("pageScreencastMode", 'fullscreen').get() === 'fullscreen';
-    this._navigationScreenCastModeSwitch.style.marginLeft = '53px';
+    this._navigationScreenCastModeSwitch.style.marginLeft = '54px';
     screencastModeLynx.appendChild(this._navigationScreenCastModeSwitch);
     const screencastModeFullScreen = this._navigationBar.createChild('span', 'title-low');
     screencastModeFullScreen.appendChild(document.createTextNode('FullScreen'));
@@ -730,6 +741,7 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
       this._navigationBack.addEventListener('click', this._navigateToHistoryEntry.bind(this, -1), false);
       this._navigationForward.addEventListener('click', this._navigateToHistoryEntry.bind(this, 1), false);
       this._navigationReload.addEventListener('click', this._navigateReload.bind(this), false);
+      this._navigationScreenSwitch.addEventListener('click', this._navigateScreenCastQuality.bind(this), false);
       this._navigationScreenCastModeSwitch?.addEventListener('click', this._navigationScreenCastModeChange.bind(this));
       this._navigationUrl.addEventListener('keyup', this._navigationUrlKeyUp.bind(this), true);
       this._requestNavigationHistory();

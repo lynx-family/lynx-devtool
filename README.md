@@ -66,16 +66,16 @@ git clone git@github.com:lynx-family/lynx-devtool.git --depth=1
 cd lynx-devtool
 ```
 
-2. Sync DevTools dependencies and build it:
-
-```bash
-pnpm run build:devtools-frontend-lynx
-```
-
-3. Install project dependencies:
+2. Install project dependencies:
 
 ```bash
 pnpm install
+```
+
+3. Sync DevTools dependencies and build it:
+
+```bash
+pnpm run build:devtools-frontend-lynx
 ```
 
 4. Start development environment:
