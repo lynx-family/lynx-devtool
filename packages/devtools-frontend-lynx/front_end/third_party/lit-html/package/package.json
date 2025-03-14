@@ -51,7 +51,7 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && npm run build:ts && npm run build:version-stability-test && rollup -c",
+    "build": "npm run clean && pnpm run build:ts && pnpm run build:version-stability-test && rollup -c",
     "build:watch": "rollup -c --watch",
     "build:ts": "tsc --build && treemirror development . '**/*.d.ts{,.map}'",
     "build:ts:watch": "tsc --build --watch",
@@ -61,9 +61,9 @@
     "clean": "rm -rf {async-directive,directive-helpers,directive,experimental-hydrate,lit-html,polyfill-support,private-ssr-support,static}.{js,js.map,d.ts} test/ directives/ development/ version-stability-test/ *.tsbuildinfo",
     "dev": "scripts/dev.sh",
     "prepublishOnly": "npm run check-version",
-    "test": "npm run test:dev && npm run test:prod",
+    "test": "npm run test:dev && pnpm run test:prod",
     "test:dev": "cd ../tests && npx wtr '../lit-html/development/**/*_test.(js|html)'",
-    "test:prod": "MODE=prod npm run test:dev -- '../lit-html/src/test/version-stability_test.js'",
+    "test:prod": "MODE=prod pnpm run test:dev -- '../lit-html/src/test/version-stability_test.js'",
     "test:watch": "npm run test:dev -- --watch"
   },
   "files": [

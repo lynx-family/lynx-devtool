@@ -241,7 +241,7 @@ Usual [steps](https://chromium.googlesource.com/chromium/src/+/main/docs/contrib
 
 ## Managing dependencies
 
-- To sync dependencies from Chromium to DevTools frontend, use `scripts/deps/roll_deps.py && npm run generate-protocol-resources`.
+- To sync dependencies from Chromium to DevTools frontend, use `scripts/deps/roll_deps.py && pnpm run generate-protocol-resources`.
 
 The following scripts run as AutoRollers, but can be manually invoked if desired:
 

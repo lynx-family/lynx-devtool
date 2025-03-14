@@ -36,7 +36,7 @@ const componentDocsBaseArg = argv.componentDocsBase || process.env.COMPONENT_DOC
     getTestRunnerConfigSetting('component-server-base-path', '');
 
 /**
- * When you run npm run components-server we run the script as is from scripts/,
+ * When you run pnpm run components-server we run the script as is from scripts/,
  * but when this server is run as part of a test suite it's run from
  * out/Default/gen/scripts, so we have to do a bit of path mangling to figure
  * out where we are.
