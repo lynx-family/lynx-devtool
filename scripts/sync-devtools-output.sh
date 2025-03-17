@@ -23,41 +23,68 @@ echo "Detected environment: $env_type"
 # Find the latest file
 find_latest_file() {
   local dir="$1"
-  local pattern="$2"
-  
+  local pattern_base="$2"
+  local pattern="$pattern_base"  # Ensure we use the correct variable
+
+  echo "Finding latest file in $dir matching pattern: $pattern" >&2
+
   case "$env_type" in
-    mingw)
-      echo "Using MINGW approach to find latest file..."
-      if ls "$dir"/$pattern >/dev/null 2>&1; then
-        ls -1 "$dir"/$pattern | sort -t. -k3 -n | tail -n 1
+    cygwin)
+      echo "Using Cygwin approach to find latest file..." >&2
+      # Convert the wildcard pattern into a regex for grep
+      local regex
+      regex=$(echo "$pattern" | sed 's/\./\\./g' | sed 's/\*/.*/g')
+      if ls -1 "$dir" 2>/dev/null | grep -E "$regex" >/dev/null; then
+        ls -1 "$dir" | grep -E "$regex"  | tail -n 1 | \
+          xargs -I{} echo "$dir/{}"
+      else
+        echo "No matching files found in directory $dir" >&2
+        # Debug: list all files in the directory
+        echo "Files in directory:" >&2
+        ls -la "$dir" >&2
+        return 1
       fi
       ;;
       
-    windows)
-      echo "Using native Windows approach to find latest file..."
-      if command -v powershell.exe >/dev/null 2>&1; then
-        echo "Attempting PowerShell method..."
-        win_dir=$(echo "$dir" | sed 's|/|\\|g')
-        powershell.exe -Command "Get-ChildItem -Path \"$dir\" -Filter \"$pattern\" | Sort-Object -Property Name | Select-Object -Last 1 -ExpandProperty FullName" | tr -d '\r'
+    mingw)
+      echo "Using MINGW approach to find latest file..." >&2
+      if ls -1 "$dir"/"$pattern" >/dev/null 2>&1; then
+        ls -1 "$dir"/"$pattern" | sort -t. -k3 -n | tail -n 1
       else
-        echo "Falling back to cmd.exe method..."
+        echo "No matching files found" >&2
+        return 1
+      fi
+      ;;
+
+    windows)
+      echo "Using native Windows approach to find latest file..." >&2
+      if command -v powershell.exe >/dev/null 2>&1; then
+        echo "Attempting PowerShell method..." >&2
         win_dir=$(echo "$dir" | sed 's|/|\\|g')
-        # Save current directory
+        powershell.exe -Command "Get-ChildItem -Path \"$win_dir\" | Where-Object { \$_.Name -like \"$pattern\" } | Sort-Object -Property Name | Select-Object -Last 1 -ExpandProperty FullName" | tr -d '\r'
+      else
+        echo "Falling back to cmd.exe method..." >&2
+        win_dir=$(echo "$dir" | sed 's|/|\\|g')
         old_pwd=$(pwd)
         cd "$dir" || return
-        local filename=$(cmd.exe /c "dir /b /o:n $pattern" | tail -n 1) || echo "No matching files found"
+        local filename
+        filename=$(cmd.exe /c "dir /b /o:n $pattern" | tail -n 1)
         cd "$old_pwd" || return
         if [[ -n "$filename" ]]; then
           echo "${dir}/${filename}"
         else
-          echo "No matching files found"
+          echo "No matching files found" >&2
+          return 1
         fi
       fi
       ;;
-      
+
     unix)
-      echo "Using Unix approach to find latest file..."
-      find "$dir" -type f -name "$pattern" | sort -V | tail -n 1 || echo "No matching files found"
+      echo "Using Unix approach to find latest file..." >&2
+      find "$dir" -type f -name "$pattern" | sort -V | tail -n 1 || {
+        echo "No matching files found" >&2
+        return 1
+      }
       ;;
   esac
 }
@@ -69,29 +96,29 @@ delete_matching_files() {
   
   case "$env_type" in
     mingw)
-      echo "Using MINGW approach to delete files..."
-      rm -f "$dir"/$pattern 2>/dev/null || echo "No files to delete"
+      echo "Using MINGW approach to delete files..." >&2
+      rm -f "$dir"/$pattern 2>/dev/null || echo "No files to delete" >&2
       ;;
       
     windows)
-      echo "Using native Windows approach to delete files..."
+      echo "Using native Windows approach to delete files..." >&2
       # Try PowerShell first
       if command -v powershell.exe >/dev/null 2>&1; then
-        echo "Attempting PowerShell deletion..."
+        echo "Attempting PowerShell deletion..." >&2
         win_dir=$(echo "$dir" | sed 's|/|\\|g')
-        powershell.exe -Command "Remove-Item -Path \"$dir\\$pattern\" -Force -ErrorAction SilentlyContinue" || echo "No files to delete"
+        powershell.exe -Command "Remove-Item -Path \"$dir\\$pattern\" -Force -ErrorAction SilentlyContinue" || echo "No files to delete" >&2
       else
         # Fall back to cmd.exe
-        echo "Falling back to cmd.exe deletion..."
+        echo "Falling back to cmd.exe deletion..." >&2
         win_dir=$(echo "$dir" | sed 's|/|\\|g')
         win_pattern=$(echo "$pattern" | sed 's|\.|\\\.|g')
-        cmd.exe /c "del /q \"${win_dir}\\${win_pattern}\" 2>nul" || echo "No files to delete"
+        cmd.exe /c "del /q \"${win_dir}\\${win_pattern}\" 2>nul" || echo "No files to delete" >&2
       fi
       ;;
       
     unix)
-      echo "Using Unix approach to delete files..."
-      find "$dir" -type f -name "$pattern" -exec rm -v {} \; 2>/dev/null || echo "No files to delete"
+      echo "Using Unix approach to delete files..." >&2
+      find "$dir" -type f -name "$pattern" -exec rm -v {} \; 2>/dev/null || echo "No files to delete" >&2
       ;;
   esac
 }
