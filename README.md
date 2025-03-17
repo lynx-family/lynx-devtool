@@ -48,15 +48,13 @@ This project uses corepack to manage package manager versions. Please follow the
 # Enable corepack
 corepack enable
 
-# Install and use specified Node.js version with nvm
-For NVM:
-```
+# Install and use specified Node.js version with nvm or NVS
+
+#For NVM:
 nvm install 18.20.2
 nvm use 18.20.2
-```
 
-For NVS:
-```
+#For NVS:
 nvs add 18.20.2
 nvs use 18.20.2
 ```
