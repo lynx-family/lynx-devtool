@@ -14,8 +14,8 @@ if "%~1"=="" (
 
 :all
     call :setup
-    call :build
     call :install
+    call :build
     call :dev
     goto :end
 
@@ -57,15 +57,15 @@ if "%~1"=="" (
     if not "%~1"=="" goto :end
     goto :eof
 
-:build
-    echo Building DevTools frontend...
-    call npx pnpm@%PNPM_VERSION% run build:devtools-frontend-lynx
-    if not "%~1"=="" goto :end
-    goto :eof
-
 :install
     echo Installing project dependencies...
     call npx pnpm@%PNPM_VERSION% install
+    if not "%~1"=="" goto :end
+    goto :eof
+
+:build
+    echo Building DevTools frontend...
+    call npx pnpm@%PNPM_VERSION% run build:devtools-frontend-lynx
     if not "%~1"=="" goto :end
     goto :eof
 
