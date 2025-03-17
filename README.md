@@ -96,8 +96,8 @@ pnpm run dev
 
 ```bash
 make setup
-make build
 make install
+make build
 make dev
 ```
 
@@ -107,8 +107,8 @@ or just call `make all`
 
 ```bash
 setup.bat setup
-setup.bat build
 setup.bat install
+setup.bat build
 setup.bat dev
 ```
 
