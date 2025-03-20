@@ -173,38 +173,6 @@ export class ConsoleModel extends Common.ObjectWrapper.ObjectWrapper implements 
     Common.EventTarget.removeEventListeners(this._targetListeners.get(target) || []);
   }
 
-  _isLocalObject(node: Acorn.Node): boolean {
-    const localIdentifiers = [
-      'LynxTestModule',
-      'NativeModules',
-      'NetworkingModule',
-      'allRemoved',
-      'clearInterval',
-      'clearTimeout',
-      'componentEventBatch',
-      'lynx',
-      'modules',
-      'nativeAppId',
-      'resolvedPromise',
-      'setInterval',
-      'setTimeout',
-      '__sourcemap__release__',
-      '_apiList',
-      '_appInstance',
-      '_cardPath',
-      '_componentInstance',
-      '_componentOpts',
-      '_intersectionObserverManager',
-      '_nativeApp',
-      '_params',
-      'appInstance',
-      'nativeApp',
-      'params'
-    ];
-    // @ts-ignore
-    return localIdentifiers.includes(node.name);
-  }
-
   _addGlobalPrefix(input: string): string {
     const ast = Acorn.parse(input, { ecmaVersion: 2022 });
     // @ts-ignore
@@ -212,18 +180,25 @@ export class ConsoleModel extends Common.ObjectWrapper.ObjectWrapper implements 
     // @ts-ignore
     window.acorn.walk.simple(ast, {
       // @ts-ignore
-      Identifier: node => {
-        if (node.type === 'Identifier' && this._isLocalObject(node)) {
+      Identifier: (node) => {
+        if (node.type === 'Identifier') {
           ranges.push([node.start, node.end]);
         }
-      },
+      }
     });
     // @ts-ignore
-    ranges.sort((f, s) => (s[0] - f[0]));
+    ranges.sort((f, s) => s[0] - f[0]);
     let result = input;
     // @ts-ignore
-    ranges.forEach(range => {
-      result = result.substring(0, range[0]) + 'globalThis.multiApps[globalThis.currentAppId].' + result.substring(range[0]);
+    ranges.forEach((range) => {
+      result =
+        result.substring(0, range[0]) +
+        '(this.' +
+        result.substring(range[0], range[1]) +
+        ' ?? this.multiApps[this.currentDebugAppId ?? this.currentAppId]?.' +
+        result.substring(range[0], range[1]) +
+        ')' +
+        result.substring(range[1]);
     });
     return result;
   }
