@@ -87,7 +87,7 @@ function runTests(buildDirectoryPath, useDebugDevtools) {
   if (useDebugDevtools) {
     testArgs.push('--additional-driver-flag=--debug-devtools');
   } else {
-    console.log('TIP: You can debug a test using: npm run debug-test inspector/test-name.html');
+    console.log('TIP: You can debug a test using: pnpm run debug-test inspector/test-name.html');
   }
 
   if (IS_DEBUG_ENABLED) {
