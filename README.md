@@ -71,11 +71,6 @@ cd lynx-devtool
 ```bash
 pnpm install
 ```
-3. Make sure that you can run python3 as python if you are in Debian:
-
-```bash
-sudo apt install python-is-python3
-```
 
 4. Sync DevTools dependencies and build it:
 
