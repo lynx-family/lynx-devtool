@@ -39,6 +39,7 @@ An Electron-based developer tool for Lynx, providing mobile debugging features.
 - pnpm = 7.33.6
 - Git
 - Python3
+- python-is-python3
 
 ### Node.js Version Management
 
