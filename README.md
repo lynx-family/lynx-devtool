@@ -71,14 +71,19 @@ cd lynx-devtool
 ```bash
 pnpm install
 ```
+3. Make sure that you can run python3 as python if you are in Debian:
 
-3. Sync DevTools dependencies and build it:
+```bash
+sudo apt install python-is-python3
+```
+
+4. Sync DevTools dependencies and build it:
 
 ```bash
 pnpm run build:devtools-frontend-lynx
 ```
 
-4. Start development environment:
+5. Start development environment:
 
 ```bash
 pnpm run dev
