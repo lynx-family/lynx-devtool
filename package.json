@@ -5,7 +5,7 @@
   "description": "Lynx DevTool",
   "main": "dist/index.js",
   "scripts": {
-    "build": "rsbuild build && node ./copy-preload.js",
+    "build": "rsbuild build && node ./scripts/copy-preload.js",
     "start": "rsbuild build && electron .",
     "dev:build": "rsbuild build",
     "dev:serve": "rsbuild dev",

@@ -24,8 +24,8 @@
     "unzipResources": "node ./scripts/unzip-resources.js"
   },
   "dependencies": {
-    "@lynx-js/debug-router-connector": "0.0.2",
     "@lynx-dev/lynx-devtool-utils": "workspace:*",
+    "@lynx-js/debug-router-connector": "0.0.2",
     "asar": "^3.2.0",
     "async": "3.2.4",
     "axios": "^1.8.1",
@@ -42,13 +42,14 @@
     "express-static-gzip": "^2.1.7",
     "form-data": "^4.0.0",
     "fs-extra": "11.1.1",
+    "glob": "^11.0.1",
     "http-proxy-middleware": "2.0.6",
     "node-fetch": "2.6.7",
     "open": "^8.4.0",
     "ping": "0.4.4",
     "serve-favicon": "2.5.0",
-    "ws": "8.13.0",
     "tar": "^7.4.3",
+    "ws": "8.13.0",
     "yargs": "17.7.2"
   },
   "devDependencies": {
