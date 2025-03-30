@@ -5,7 +5,7 @@
   "description": "Lynx DevTool",
   "main": "dist/index.js",
   "scripts": {
-    "build": "rsbuild build && sh ./copy-preload.sh",
+    "build": "rsbuild build && node ./copy-preload.js",
     "start": "rsbuild build && electron .",
     "dev:build": "rsbuild build",
     "dev:serve": "rsbuild dev",
@@ -14,12 +14,11 @@
     "copy-web-dist": "node ./scripts/copy-web-dist.js",
     "clean": "node ./scripts/clean.js",
     "rebuild": "pnpm run clean && pnpm run build",
-    "build:devtools-frontend-lynx": "pnpm run fetch:depot_tools && npx cross-env PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH pnpm run sync:devtools-gn && pnpm run build:devtools && pnpm run sync:devtools-dist",
-
-    "fetch:depot_tools": "cd packages/devtools-frontend-lynx && sh ./scripts/fetch-depot-tools.sh",
-    "sync:devtools-gn": "gclient sync --gclientfile=.gclient --deps=all",
-    "build:devtools": "cd packages/devtools-frontend-lynx && sh ./scripts/build-lynx-devtools.sh",
-    "sync:devtools-dist": "sh ./scripts/sync-devtools-output.sh",
+    "build:devtools-frontend-lynx": "pnpm run fetch:depot_tools &&  pnpm run sync:devtools-gn && pnpm run build:devtools && pnpm run sync:devtools-dist",
+    "fetch:depot_tools": "cd packages/devtools-frontend-lynx && node ./scripts/fetch-depot-tools.js",
+    "sync:devtools-gn": "node ./scripts/run-gclient.js",
+    "build:devtools": "cd packages/devtools-frontend-lynx && node ./scripts/build-lynx-devtools.js",
+    "sync:devtools-dist": "node ./scripts/sync-devtools-output.js",
     "production:mac-arm64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --arm64",
     "production:mac-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --x64",
     "production:win-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win --x64",
@@ -27,7 +26,7 @@
     "production:win": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --win",
     "production:linux": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --linux",
     "production:linux-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --linux --x64",
-    "production":"pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder -mwl"
+    "production": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder -mwl"
   },
   "author": "lynx",
   "license": "Apache-2.0",

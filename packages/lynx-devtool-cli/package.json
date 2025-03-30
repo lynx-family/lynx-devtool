@@ -18,10 +18,10 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "tsc && pnpm run unzipResources",
-    "start": "bash scripts/start.sh cli",
-    "start:cli": "bash scripts/start.sh cli",
+    "start": "node ./scripts/start.js cli",
+    "start:cli": "node ./scripts/start.js cli",
     "start:cli:debug": "node bin/ldt.js start --upgradeChannel debug --debug true",
-    "unzipResources": "bash scripts/unzip-resources.sh"
+    "unzipResources": "node ./scripts/unzip-resources.js"
   },
   "dependencies": {
     "@lynx-js/debug-router-connector": "0.0.2",
@@ -48,6 +48,7 @@
     "ping": "0.4.4",
     "serve-favicon": "2.5.0",
     "ws": "8.13.0",
+    "tar": "^7.4.3",
     "yargs": "17.7.2"
   },
   "devDependencies": {
