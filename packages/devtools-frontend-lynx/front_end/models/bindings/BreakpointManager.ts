@@ -86,11 +86,27 @@ export class BreakpointManager extends Common.ObjectWrapper.ObjectWrapper {
     return breakpointManagerInstance;
   }
 
-  static _breakpointStorageId(url: string, lineNumber: number, columnNumber?: number): string {
+  static _breakpointStorageId(
+    url: string,
+    lineNumber: number,
+    columnNumber?: number,
+    sessionUrl?: string,
+    appInfo?: string
+  ): string {
     if (!url) {
       return '';
     }
-    return `${url}:${lineNumber}` + (typeof columnNumber === 'number' ? `:${columnNumber}` : '');
+    let newUrl = BreakpointManager.removeViewIdFromScriptUrl(url);
+    return (
+      `${appInfo}:${sessionUrl}:${newUrl}:${lineNumber}` + (typeof columnNumber === 'number' ? `:${columnNumber}` : '')
+    );
+  }
+
+  static removeViewIdFromScriptUrl(url: string): string {
+    if (url.startsWith('file://view')) {
+      url = url.replace(/^file:\/\/view\d+/, 'file://view');
+    }
+    return url;
   }
 
   async copyBreakpoints(fromURL: string, toSourceCode: Workspace.UISourceCode.UISourceCode): Promise<void> {
@@ -151,9 +167,21 @@ export class BreakpointManager extends Common.ObjectWrapper.ObjectWrapper {
   }
 
   _innerSetBreakpoint(
-      uiSourceCode: Workspace.UISourceCode.UISourceCode, lineNumber: number, columnNumber: number|undefined,
-      condition: string, enabled: boolean): Breakpoint {
-    const itemId = BreakpointManager._breakpointStorageId(uiSourceCode.url(), lineNumber, columnNumber);
+    uiSourceCode: Workspace.UISourceCode.UISourceCode,
+    lineNumber: number,
+    columnNumber: number | undefined,
+    condition: string,
+    enabled: boolean
+  ): Breakpoint {
+    const itemId = BreakpointManager._breakpointStorageId(
+      uiSourceCode.url(),
+      lineNumber,
+      columnNumber,
+      // @ts-ignore
+      window.sessionUrl, 
+      // @ts-ignore
+      window.info?.App
+    );
     let breakpoint = this._breakpointByStorageId.get(itemId);
     if (breakpoint) {
       breakpoint._updateState(condition, enabled);
@@ -491,7 +519,15 @@ export class Breakpoint implements SDK.TargetManager.SDKModelObserver<SDK.Debugg
   }
 
   _breakpointStorageId(): string {
-    return BreakpointManager._breakpointStorageId(this._url, this._lineNumber, this._columnNumber);
+    return BreakpointManager._breakpointStorageId(
+      this._url,
+      this._lineNumber,
+      this._columnNumber,
+      // @ts-ignore
+      window.sessionUrl,
+      // @ts-ignore
+      window.info?.App
+    );
   }
 
   _resetLocations(): void {
@@ -831,8 +867,26 @@ class Storage {
     this._setting = Common.Settings.Settings.instance().createLocalSetting('breakpoints', []);
     this._breakpoints = new Map();
     const items = (this._setting.get() as Storage.Item[]);
+    let hasInValidBp = 0;
     for (const item of items) {
-      this._breakpoints.set(BreakpointManager._breakpointStorageId(item.url, item.lineNumber, item.columnNumber), item);
+      if (!item.sessionUrl || !item.appInfo) {
+        hasInValidBp++;
+      } else {
+        this._breakpoints.set(
+          BreakpointManager._breakpointStorageId(
+            item.url,
+            item.lineNumber,
+            item.columnNumber,
+            item.sessionUrl,
+            item.appInfo
+          ),
+          item
+        );
+      }
+    }
+    if (hasInValidBp) {
+      console.log('delete invalid breakpoints: ', hasInValidBp);
+      this._save();
     }
   }
 
@@ -845,7 +899,19 @@ class Storage {
   }
 
   breakpointItems(url: string): Storage.Item[] {
-    return Array.from(this._breakpoints.values()).filter(item => item.url === url);
+    let newUrl = BreakpointManager.removeViewIdFromScriptUrl(url);
+    return Array.from(this._breakpoints.values()).filter((item) => {
+      // @ts-ignore
+      if (!item.appInfo || (item.appInfo && item.appInfo !== window.info?.App)) {
+        return false;
+      }
+      // @ts-ignore
+      if (!item.sessionUrl || (item.sessionUrl && item.sessionUrl !== window.sessionUrl)) {
+        return false;
+      }
+      let newItemUrl = BreakpointManager.removeViewIdFromScriptUrl(item.url);
+      return newItemUrl === newUrl;
+    });
   }
 
   _updateBreakpoint(breakpoint: Breakpoint): void {
@@ -875,6 +941,8 @@ namespace Storage {
     columnNumber?: number;
     condition: string;
     enabled: boolean;
+    sessionUrl?: string;
+    appInfo?: string;
 
     constructor(breakpoint: Breakpoint) {
       this.url = breakpoint._url;
@@ -882,6 +950,10 @@ namespace Storage {
       this.columnNumber = breakpoint.columnNumber();
       this.condition = breakpoint.condition();
       this.enabled = breakpoint.enabled();
+      // @ts-ignore
+      this.sessionUrl = window.sessionUrl;
+      // @ts-ignore
+      this.appInfo = window.info?.App;
     }
   }
 }
