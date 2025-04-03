@@ -175,6 +175,16 @@ export class ChildTargetManager extends SDKModel implements ProtocolProxyApi.Tar
     } else {
       target.runtimeAgent().invoke_runIfWaitingForDebugger();
     }
+
+    Host.InspectorFrontendHost.sendWindowMessage({
+      type: 'update_session_target',
+      content: {
+        type: 'target_attached',
+        info: {
+          sessionId: sessionId,
+        }
+      }
+    });
   }
 
   detachedFromTarget({sessionId}: Protocol.Target.DetachedFromTargetEvent): void {
@@ -187,6 +197,16 @@ export class ChildTargetManager extends SDKModel implements ProtocolProxyApi.Tar
         this._childTargets.delete(sessionId);
       }
     }
+
+    Host.InspectorFrontendHost.sendWindowMessage({
+      type: 'update_session_target',
+      content: {
+        type: 'target_detached',
+        info: {
+          sessionId: sessionId,
+        }
+      }
+    });
   }
 
   receivedMessageFromTarget({}: Protocol.Target.ReceivedMessageFromTargetEvent): void {

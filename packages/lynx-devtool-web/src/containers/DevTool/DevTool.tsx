@@ -36,6 +36,7 @@ import './DevTool.scss';
 import DebugButton from './components/DebugButton';
 import DevToolAbnormal from './components/DevToolAbnormal';
 import { sendEventToSimulator } from '@/api/electron';
+import { getStore } from '@/utils/flooks';
 
 let notificationId = '';
 let dignoseNotificationId = '';
@@ -54,7 +55,8 @@ const DevTool = () => {
     devtoolSessionWillChange,
     setKeepCardOpen,
     setKeepCardOpenSessionId,
-    cardFilter
+    cardFilter,
+    setDeviceInfoMap
   } = useConnection();
   const { user } = useUser();
   const [configListVisible, setConfigListVisible] = useState(false);
@@ -202,11 +204,36 @@ const DevTool = () => {
         sendEventToSimulator(event.data.data);
       }
     };
+    const sessionTargetHandler = (msgObject: Record<string, any>) => {
+      const { deviceInfoMap: currentDeviceInfoMap, selectedDevice: currentSelectedDevice } = getStore(useConnection);
+      const newDeviceInfoMap = { ...currentDeviceInfoMap };
+      const session = newDeviceInfoMap[currentSelectedDevice.clientId ?? 0]?.selectedSession;
+      if (!session) {
+        return;
+      }
+      const { type, info } = msgObject;
+      const { sessionId } = info;
+      if (!sessionId) {
+        return;
+      }
+      if (type === 'target_attached') {
+        if (!session.targets) {
+          session.targets = new Set();
+        }
+        session.targets.add(sessionId);
+      } else if (type === 'target_detached') {
+        if (session.targets) {
+          session.targets.delete(sessionId);
+        }
+      }
+      setDeviceInfoMap(newDeviceInfoMap);
+    };
     devtoolActionHandler.registerHandler('update_delay', delayHandler);
     devtoolActionHandler.registerHandler('update_loading_progress', loadingProgressHandler);
     devtoolActionHandler.registerHandler('statistics', statisticsHandler);
     devtoolActionHandler.registerHandler('addEnvLog', envLogHandler);
     devtoolActionHandler.registerHandler('send_message', customMsgMonitor);
+    devtoolActionHandler.registerHandler('update_session_target', sessionTargetHandler);
 
     if (!isInMobilePageMode()) {
       window.addEventListener('message', onSimulatorMessage);
@@ -217,6 +244,7 @@ const DevTool = () => {
       devtoolActionHandler.removeHandler('statistics', statisticsHandler);
       devtoolActionHandler.removeHandler('addEnvLog', envLogHandler);
       devtoolActionHandler.removeHandler('send_message', customMsgMonitor);
+      devtoolActionHandler.removeHandler('update_session_target', sessionTargetHandler);
       if (!isInMobilePageMode()) {
         window.removeEventListener('message', onSimulatorMessage);
       }

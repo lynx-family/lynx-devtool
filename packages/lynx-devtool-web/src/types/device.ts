@@ -9,6 +9,7 @@ export interface ISessionInfo {
   type: 'web' | 'worker' | '';
   screenshot?: string;
   engineType?: string;
+  targets?: Set<string>;
 }
 export interface IDevice {
   clientId?: number;

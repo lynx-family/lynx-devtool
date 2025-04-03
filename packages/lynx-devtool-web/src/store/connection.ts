@@ -716,6 +716,27 @@ const connectionStore = (store: any) => ({
           method: 'Runtime.disable'
         }
       });
+      // send disable to all targets of the old session
+      if (oldSession.targets) {
+        oldSession.targets.forEach((target) => {
+          debugDriver.sendCustomMessageAsync({
+            sessionId: oldSession.session_id,
+            type: ECustomDataType.CDP,
+            params: {
+              method: 'Debugger.disable',
+              sessionId: target
+            }
+          });
+          debugDriver.sendCustomMessageAsync({
+            sessionId: oldSession.session_id,
+            type: ECustomDataType.CDP,
+            params: {
+              method: 'Runtime.disable',
+              sessionId: target
+            }
+          });
+        });
+      }
       // web only
       if (oldSession.type !== '') {
         debugDriver.sendCustomMessageAsync({
