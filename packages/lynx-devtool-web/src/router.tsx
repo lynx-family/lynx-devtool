@@ -3,12 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 import DevToolSvg from '@/assets/icons/devtool.svg';
-import { ToolOutlined } from '@ant-design/icons';
+import { ToolOutlined, VideoCameraOutlined} from '@ant-design/icons';
 import { t } from 'i18next';
 import { Suspense, lazy, useMemo } from 'react';
 import CacheRoutes, { RouterConfig } from './components/CacheRoutes/CacheRoutes';
 
 const DevTool = lazy(() => import('./containers/DevTool/DevTool'));
+const TestBench = lazy(()=> import('./containers/TestBench/TestBench'));
 
 // eslint-disable-next-line max-lines-per-function
 export function getRouters(): Array<RouterConfig> {
@@ -24,6 +25,14 @@ export function getRouters(): Array<RouterConfig> {
       icon: <ToolOutlined style={{ fontSize: 18 }} />,
       path: '/devtool',
       element: <DevTool />,
+      isMenu: true,
+      keepAlive: true
+    },
+    {
+      title: 'Lynx TestBench',
+      icon: <VideoCameraOutlined style={{ fontSize: 18 }} />,
+      path: '/testbench',
+      element: <TestBench />,
       isMenu: true,
       keepAlive: true
     }
