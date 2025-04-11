@@ -15,9 +15,11 @@ import { getStore } from './flooks';
 import * as reduxUtils from './storeUtils';
 import useUnattached, { UnattachedStoreType } from '@/store/unattached';
 import envLogger from './envLogger';
+import { TestbenchStoreType } from '@/store/testbench';
 
 class MessageCenter {
   clientAction: ConnectionStoreType | null = null;
+  testbenchAction: TestbenchStoreType | null = null;
   unattachedAction: UnattachedStoreType | null = null;
 
   // ********* recv from LDT server **********/
@@ -115,6 +117,9 @@ class MessageCenter {
       case LDT_CONST.TRACING_EVENT_COMPLETE:
         this.handleTraceComplete(msg, clientId);
         break;
+      case LDT_CONST.TESTBENCH_EVENT_COMPLETE:
+          this.handleTestbenchComplete(msg, clientId);
+          break;
       case LDT_CONST.MSG_ScreenshotCaptured: {
         const sessionId = content?.data?.session_id;
         this.handleScreenshotCaptured(msg, sessionId);
@@ -127,6 +132,73 @@ class MessageCenter {
       this.handleEngineType(msg.result.engineType, clientId, content?.data?.session_id);
     }
     return false;
+  }
+
+  async handleTestbenchComplete(msg: any, clientId: number) {
+    console.log('has receive TestbenchComplete');
+    const streams = msg?.params?.stream;
+    const sessionIds = msg?.params?.sessionIDs;
+    if (streams) {
+      const allStreams: Promise<any>[] = [];
+      streams.forEach((streamId: number, index: number) => {
+        const session_id = sessionIds[index];
+        if (session_id !== -1) {
+          console.log('start read testbench data:');
+          allStreams.push(
+            this.readStreamDataPromise(streamId).then((dataChunks) => {
+              if (dataChunks) {
+                return this.handleTestbenchData(dataChunks, session_id);
+              } else {
+                console.warn('dataChunks is ' + dataChunks);
+              }
+            })
+          );
+        } else {
+          console.warn('invalid msg format: session_id:' + session_id);
+        }
+      });
+      await Promise.all(allStreams);
+      this.clientAction?.setTestbenchLoading(clientId, false);
+    } else {
+      // 未返回有效数据
+      this.clientAction?.setTestbenchLoading(clientId, false);
+      // Notification.warning({
+      //   content: React.createElement('div', null, t('testbench_notice')),
+      //   duration: 6
+      // });
+    }
+  }
+
+  async handleTestbenchData(buffers: Array<Buffer>, sessionId: number) {
+    const filename = `${utils.getFileName()}__${sessionId}.json`;
+    const buffer = Buffer.concat(buffers);
+    // const bufferWithInternalResource = await resourceUrlRedirect(buffer);
+    // const cdnRes = await uploadFileBufferTos([].slice.call(buffer), filename);
+    // if (!cdnRes?.url) {
+    //   console.warn('cdnRes url is incorrect:' + cdnRes?.url);
+    //   return;
+    // }
+    const currentClient = reduxUtils.getSelectClient();
+    const appName = currentClient?.info?.App;
+    const deviceModel = currentClient?.info?.deviceModel;
+    const osType = currentClient?.info?.osType;
+    const PIC_URL_PREFIX = 'data:image/jpeg;base64,';
+    const qr_url = `sslocal://arkview?url=$`;
+    // const testbenchState = reduxUtils.getCurrentTestbenchState() as any;
+    const pic = null;
+    const pic_src = pic ? PIC_URL_PREFIX + pic : unknowdScreenImg;
+    // const [isValid, message] = checkValid(buffer);
+    this.testbenchAction?.addTestbenchData({
+      id: sessionId,
+      pic: pic_src,
+      url: qr_url,
+      cdn: qr_url,
+      appName,
+      deviceModel,
+      osType,
+      isValid: true,
+      message:null,
+    });
   }
 
   async readStreamDataPromise(stream: number): Promise<Array<Buffer>> {
