@@ -47,6 +47,9 @@
 .page-session-item-tooltips-content {
   display: flex;
   flex-direction: column;
+  img {
+    width: 70%;
+  }
 }
 
 .page-session-item-url-container {
