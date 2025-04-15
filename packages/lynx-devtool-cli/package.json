@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/lynx-devtool-cli",
-  "version": "0.0.1-beta.6",
+  "version": "0.0.1-beta.7",
   "description": "Lynx DevTool toolkit",
   "license": "Apache-2.0",
   "main": "./dist/lib/index.js",
