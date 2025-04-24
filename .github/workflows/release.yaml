@@ -24,14 +24,22 @@ jobs:
         run: |
           if [[ ${{ github.ref }} =~ .*-alpha.* ]]; then
             echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+            echo "IS_TEMP_VERSION=false" >> $GITHUB_OUTPUT
             echo "RELEASE_TYPE=Alpha" >> $GITHUB_OUTPUT
             echo "ASSET_SUFFIX=alpha" >> $GITHUB_OUTPUT
           elif [[ ${{ github.ref }} =~ .*-beta.* ]]; then
             echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+            echo "IS_TEMP_VERSION=false" >> $GITHUB_OUTPUT
             echo "RELEASE_TYPE=Beta" >> $GITHUB_OUTPUT
             echo "ASSET_SUFFIX=beta" >> $GITHUB_OUTPUT
+          elif [[ ${{ github.ref }} =~ .*-temp.* ]]; then
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+            echo "IS_TEMP_VERSION=true" >> $GITHUB_OUTPUT
+            echo "RELEASE_TYPE=Temp" >> $GITHUB_OUTPUT
+            echo "ASSET_SUFFIX=temp" >> $GITHUB_OUTPUT
           else
             echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+            echo "IS_TEMP_VERSION=false" >> $GITHUB_OUTPUT
             echo "RELEASE_TYPE=Release" >> $GITHUB_OUTPUT
             echo "ASSET_SUFFIX=release" >> $GITHUB_OUTPUT
           fi
@@ -51,7 +59,12 @@ jobs:
 
             ### Release Notes
             - This is a pre-release version for testing purposes only
-            - Not recommended for production use' || github.ref }}
+            - Not recommended for production use' || steps.release_type.outputs.IS_TEMP_VERSION == 'true' && '⚠️ This is a temporary test version.
+
+            ### Important Notice
+            - This version is for testing purposes only
+            - Only used for DevTool developers to verify branch code
+            - May contain unstable or incomplete features' || github.ref }}
 
   build-and-upload:
     needs: create-release
