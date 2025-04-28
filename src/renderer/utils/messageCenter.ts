@@ -13,10 +13,12 @@ import { getStore } from './flooks';
 import * as reduxUtils from './storeUtils';
 import useUnattached, { UnattachedStoreType } from '@/renderer/store/unattached';
 import envLogger from './envLogger';
+import useTestbench, { TestbenchStoreType } from '@/renderer/store/testbench';
 
 class MessageCenter {
   clientAction: ConnectionStoreType | null = null;
   unattachedAction: UnattachedStoreType | null = null;
+  testbenchAction: TestbenchStoreType | null = null;
 
   // ********* recv from LDT server **********/
   // Process general messages.
@@ -26,6 +28,9 @@ class MessageCenter {
     }
     if (!this.unattachedAction) {
       this.unattachedAction = getStore(useUnattached);
+    }
+    if (!this.testbenchAction){
+      this.testbenchAction = getStore(useTestbench);
     }
     if (message) {
       const { event, data } = message;
@@ -175,6 +180,7 @@ class MessageCenter {
   }
 
   handleScreenshotCaptured(msg: any, sessionId: number) {
+    this.testbenchAction?.addScreenshot(sessionId, msg?.params?.data);
     this.clientAction?.updateSessionScreenshot(sessionId, msg?.params?.data);
   }
 
