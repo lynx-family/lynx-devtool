@@ -4,6 +4,10 @@
 NODE_VERSION = 18.20.2
 PNPM_VERSION = 7.33.6
 
+NODE_VM=$(shell \
+		command -v nvm > /dev/null 2>&1 && echo ". ~/.nvm/nvm.sh && nvm" \
+		|| command -v fnm > /dev/null 2>&1 && echo "fnm" )
+
 # Targets
 .PHONY: all setup install build dev
 
@@ -12,8 +16,8 @@ all: setup build install dev
 setup:
 	@echo "Setting up Node.js and pnpm..."
 	corepack enable
-	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION)
-	. ~/.nvm/nvm.sh && nvm use $(NODE_VERSION)
+	$(NODE_VM) install $(NODE_VERSION)
+	$(NODE_VM) use $(NODE_VERSION)
 	npx pnpm@$(PNPM_VERSION) -v
 
 build:

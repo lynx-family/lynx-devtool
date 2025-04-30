@@ -51,6 +51,12 @@ corepack enable
 # Install and use specified Node.js version with nvm
 nvm install 18.20.2
 nvm use 18.20.2
+# or fnm
+fnm install 18.20.2
+fnm use 18.20.2
+
+# You can run make setup to setup corepack and pick wich node version manager to use automatically
+make setup
 
 # Verify versions
 node -v  # Should display v18.20.2
