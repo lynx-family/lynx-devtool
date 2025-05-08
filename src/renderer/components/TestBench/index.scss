@@ -1,0 +1,23 @@
+.testbench-content {
+    padding: 5px;
+    height: calc(100vh - 150px);
+  
+    .semi-table-row-head {
+      color: var(--semi-color-text1) !important;
+    }
+  
+    .semi-table-empty {
+      .semi-empty-vertical {
+        height: calc(100vh - 210px);
+      }
+    }
+  }
+  
+  .testbentch-qrcode-pop {
+    padding: 15px;
+  }
+  
+  .clear-btn {
+    margin-left: 10px;
+  }
+  
