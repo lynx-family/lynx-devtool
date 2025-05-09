@@ -74,6 +74,8 @@ const DevTool = () => {
   const checkDevtoolSwitch = async () => {
     const devtoolSwitch = await switchUtils.getSwitchStatus('enable_devtool');
     const domTreeSwitch = await switchUtils.getSwitchStatus('enable_dom_tree');
+    switchUtils.getStopAtEntry('DEFAULT');
+    switchUtils.getStopAtEntry('MTS');
     const currentClientId = getSelectClientId();
     if ((!devtoolSwitch || !domTreeSwitch) && currentClientId === selectedDevice.clientId) {
       if (notificationId !== '') {

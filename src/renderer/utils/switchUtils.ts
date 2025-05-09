@@ -5,6 +5,9 @@
 import { message } from 'antd';
 import debugDriver from './debugDriver';
 import * as reduxUtils from './storeUtils';
+import useConnection from '@/renderer/store/connection';
+import { getStore } from './flooks';
+import { getSelectClientId } from '@/renderer/utils/storeUtils';
 
 export async function setGlobalSwitch(params: any) {
   try {
@@ -125,4 +128,56 @@ export async function openDebugMode() {
     return false;
   }
   return true;
+}
+
+
+function updateStopAtEntry(type: string, value: boolean) {
+  const currentClientId = getSelectClientId();
+  if (currentClientId === undefined) {
+    return;
+  }
+  const { deviceInfoMap, setDeviceInfoMap } = getStore(useConnection);
+  const newDeviceInfoMap = { ...deviceInfoMap };
+  const deviceInfo = newDeviceInfoMap[currentClientId];
+  if (deviceInfo === undefined) {
+    return;
+  }
+  if (type === 'MTS') {
+    deviceInfo.stopLepusAtEntry = value;
+  } else if (type === 'DEFAULT') {
+    deviceInfo.stopAtEntry = value;
+  }
+  setDeviceInfoMap(newDeviceInfoMap);
+}
+
+export async function getStopAtEntry(type: string) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({
+      type: 'GetStopAtEntry',
+      params: { type }
+    });
+    const { value } = result;
+    if (value === undefined) {
+      return;
+    }
+    updateStopAtEntry(type, value);
+  } catch (error: any) {
+    console.error('getStopAtEntry error:', type, error);
+  }
+}
+
+export async function setStopAtEntry(type: string, value: boolean) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({
+      type: 'SetStopAtEntry',
+      params: { type, value }
+    });
+    const { value: resultValue } = result;
+    if (resultValue === undefined) {
+      return;
+    }
+    updateStopAtEntry(type, resultValue);
+  } catch (error: any) {
+    console.error('setStopAtEntry error:', type, value, error);
+  }
 }
