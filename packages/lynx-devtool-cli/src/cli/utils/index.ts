@@ -14,15 +14,15 @@ import ping from 'ping';
 export async function startLDTPlatformProcess(url: string, ignoreLDTApp = false): Promise<boolean> {
   const baseUrl = encodeURI(url.split(/((?<![\/])[\/|\?](?![\/]))/)[0]);
   const fullUrl = encodeURI(url);
-  
+
   let args = [path.resolve(__dirname, '../static/openChrome.applescript'), baseUrl, fullUrl];
-  
+
   if (!ignoreLDTApp) {
     const deeplinkUrl = `ldt-electron://cli/open?url=${encodeURIComponent(encodeURIComponent(url))}`;
     defaultLogger.info(`Try to open LDT App with deeplink: ${deeplinkUrl}`);
     args.push(deeplinkUrl);
   }
-  
+
   try {
     const chromeRunning = require('child_process').spawnSync('ps', ['cax'], { stdio: 'pipe' });
     if (chromeRunning.status === 0 && chromeRunning.stdout.toString().includes('Google Chrome')) {
@@ -49,6 +49,10 @@ export async function startLDTPlatformProcess(url: string, ignoreLDTApp = false)
 async function aliveIp(networkInterfaces: any[], interfaceKey: string) {
   // eslint-disable-next-line no-restricted-syntax
   for (const key in networkInterfaces) {
+    // Skip vmware virtual nic
+    if (key.toLowerCase().indexOf('vmnet') >= 0) {
+      continue;
+    }
     if (key.indexOf(interfaceKey) >= 0) {
       const networks = networkInterfaces[key];
       for (const network of networks) {

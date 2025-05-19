@@ -186,9 +186,16 @@ export function lstIdentity(req: any, res: any) {
 
 export async function checkAdb(req: any, res: any) {
   try {
-    const { stdout } = await execa('which', ['adb']);
+    // Use platform-specific command to locate ADB
+    const adbCheckCommand = process.platform === 'win32' ? 'where' : 'which';
+
+    const { stdout } = await execa(adbCheckCommand, ['adb']);
     const adbPath = stdout?.trim();
-    const adbDevicePromise = execa(adbPath, ['devices']);
+
+    // On Windows, use 'adb' directly instead of full path
+    const adbCommand = process.platform === 'win32' ? 'adb' : adbPath;
+
+    const adbDevicePromise = execa(adbCommand, ['devices']);
     const timeOutPromise = new Promise((resolve: any) => {
       setTimeout(() => {
         resolve('failed');
