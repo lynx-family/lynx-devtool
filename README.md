@@ -86,25 +86,35 @@ pnpm run dev
 
 ### Ubuntu 22.04 on WSL2 Troubleshooting
 
-#### 1. Install Python (if needed)
-If you encounter the error:
+- Using https instead of git@ if SSL error when cloning code.
 ```
-[Errno 2] No such file or directory: 'python'
-```
-Install Python 3 and set it as the default `python` command:
-```bash
-sudo apt update && sudo apt install python3 python-is-python3 -y
+git clone https://github.com/lynx-family/lynx-devtool.git --depth=1
 ```
 
-#### 2. Install Missing Electron Dependencies
-If you encounter errors like:
+- Missing pnpm
+
 ```
-electron: error while loading shared libraries: libnss3.so
-electron: error while loading shared libraries: libasound.so.2
+npm install -g pnpm@7.33.6
 ```
-Install the required libraries:
+
+- Install Python if you encounter the error: `[Errno 2] No such file or directory: 'python'`
+
 ```bash
-sudo apt update && sudo apt install libnss3 libasound2 -y
+sudo apt update && sudo apt install python3 python-is-python3 -y # Install Python 3 and set it as the default `python` command
+```
+
+- Install Missing Electron Dependencies if you encounter errors like:
+```electron: error while loading shared libraries: libnss3.so/libasound.so.2```
+
+```bash
+sudo apt update && sudo apt install libnss3 libasound2 -y # Install the required libraries
+```
+- Post install failure `/electron postinstall$ node install.js
+│ RequestError: connect ETIMEDOUT` or `RequestError: socket hang up`
+```
+export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" # Use npm mirror for electron
+rm -rf node_modules/.pnpm-store  # clear pnpm cache
+pnpm install # Retry
 ```
 
 ## Using Makefile
