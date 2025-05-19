@@ -84,6 +84,29 @@ pnpm run build:devtools-frontend-lynx
 pnpm run dev
 ```
 
+### Ubuntu 22.04 on WSL2 Troubleshooting
+
+#### 1. Install Python (if needed)
+If you encounter the error:
+```
+[Errno 2] No such file or directory: 'python'
+```
+Install Python 3 and set it as the default `python` command:
+```bash
+sudo apt update && sudo apt install python3 python-is-python3 -y
+```
+
+#### 2. Install Missing Electron Dependencies
+If you encounter errors like:
+```
+electron: error while loading shared libraries: libnss3.so
+electron: error while loading shared libraries: libasound.so.2
+```
+Install the required libraries:
+```bash
+sudo apt update && sudo apt install libnss3 libasound2 -y
+```
+
 ## Using Makefile
 
 ```bash
