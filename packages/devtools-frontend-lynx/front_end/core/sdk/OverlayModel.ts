@@ -152,6 +152,22 @@ export class OverlayModel extends SDKModel implements ProtocolProxyApi.OverlayDi
       const element = this._domModel._idToDOMNode[element_id];
       this.highlightInOverlay({ node: element, selectorList: undefined }, 'all', true);
     })
+    
+    window.addEventListener("message", (event) => {
+      if (!event.data) {
+        return;
+      }
+      switch (event.data.type) {
+        case "panel:preact_devtools":
+          if (event.data.content.type === 'PreactDevtoolsPanelUINodeIdSelected') {
+            console.log('OverlayModel PreactDevtoolsPanelUINodeIdSelected', event.data.content.message.UINodeId);
+            let element_id = event.data.content.message.UINodeId;
+            const element = this._domModel._idToDOMNode[element_id];
+            this.highlightInOverlay({ node: element, selectorList: undefined }, 'all', true);
+          }
+          break;
+      }
+    });
 
     this._peristentHighlighter = new OverlayPersistentHighlighter(this);
     this._domModel.addEventListener(DOMModelEvents.NodeRemoved, () => {
