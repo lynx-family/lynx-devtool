@@ -1,5 +1,9 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 import { BrowserWindow } from 'electron';
-import { PageMode, ViewMode } from '@lynx-js/lynx-devtool-utils/src/baseDebugger';
+import { PageMode, ViewMode } from '@lynx-js/devtool-plugin-core/main';
 
 export interface IPageParams {
   ldtUrl: string; // lynx-devtool-web address

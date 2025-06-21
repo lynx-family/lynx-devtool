@@ -1,0 +1,37 @@
+.device-select {
+  height: 32px;
+  background-color: var(--ant-color-fill-alter);
+  padding-left: 5px;
+  border-radius: var(--ant-border-radius);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 10px;
+  color: var(--ant-color-text);
+
+  &:hover {
+    background-color: var(--ant-color-fill);
+  }
+
+  .device-platform {
+    display: flex;
+    align-items: center;
+    font-weight: 400;
+    margin-left: 3px;
+    margin-right: 3px;
+    width: 160px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  .device-qrcode {
+    margin-right: 5px;
+  }
+
+  .disable {
+    color: var(--ant-color-text-disabled);
+  }
+}

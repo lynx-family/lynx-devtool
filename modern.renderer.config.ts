@@ -1,6 +1,8 @@
 import appTools, { defineConfig } from '@modern-js/app-tools';
 import { version } from './package.json';
 import { pluginNodePolyfill } from '@rsbuild/plugin-node-polyfill';
+import RspackVirtualModulePlugin from 'rspack-plugin-virtual-module';
+import { generateRendererVirtualModule } from './scripts/virtualModule';
 
 export default defineConfig({
   runtime: {
@@ -10,13 +12,13 @@ export default defineConfig({
     hmr: true
   },
   source: {
-    entriesDir: './src/renderer',
+    entriesDir: './src/renderer/pages/app',
     entries: {
       'devtool': {
-        'entry': './src/renderer/index.tsx',
+        'entry': './src/renderer/pages/app/index.tsx',
       }
     },
-    preEntry: './src/renderer/common/polyfill.ts',
+    // preEntry: './src/renderer/common/polyfill.ts',
     globalVars: {
       'process.env.LDT_BUILD_TYPE': JSON.stringify(process.env.LDT_BUILD_TYPE),
       'process.env.BUILD_VERSION': JSON.stringify(process.env.BUILD_VERSION ?? version),
@@ -33,14 +35,25 @@ export default defineConfig({
     alias: {
       zlib: require.resolve('browserify-zlib'),
       stream: require.resolve('stream-browserify'),
-      buffer: require.resolve('buffer')
+      buffer: require.resolve('buffer'),
+      path: require.resolve('path-browserify'),
+      fs: require.resolve('memfs'),
+      os: require.resolve('os-browserify/browser'),
+      crypto: require.resolve('crypto-browserify'),
+      util: require.resolve('util/'),
+      assert: require.resolve('assert/'),
+      http: require.resolve('stream-http'),
+      https: require.resolve('https-browserify'),
+      constants: require.resolve('constants-browserify'),
+      process: require.resolve('process/browser'),
     }
   },
   output: {
     distPath: {
       root: './dist/lynx-devtool-web',
     },
-    svgDefaultExport: 'component'
+    sourceMap: true,
+    svgDefaultExport: 'component',
   },
   html: {
     templateParameters: (params) => {
@@ -63,7 +76,9 @@ export default defineConfig({
   tools: {
     rspack: {
       plugins: [
-        
+        new RspackVirtualModulePlugin({
+          virtualModules: generateRendererVirtualModule(__dirname)
+        })
       ]
     }
   }

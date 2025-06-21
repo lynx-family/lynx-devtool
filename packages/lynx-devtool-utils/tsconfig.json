@@ -1,5 +1,6 @@
 {
   "extends": "@modern-js/tsconfig/base",
+  "moduleResolution": "NodeNext",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

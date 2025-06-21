@@ -1,4 +1,4 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
@@ -15,15 +15,12 @@ declare module '*.less';
 declare module '*.css';
 declare module '*.svg';
 declare module '*.svg?url';
-declare module 'react-copy-to-clipboard';
-declare module 'use-sync-external-store/shim';
-declare module 'loadjs';
-declare module 'xml-js';
-declare module 'react-html-parser';
+declare module '*.module.css';
+declare module 'copy-text-to-clipboard';
 
-// declare for APIs in electron
 interface Window {
-  ldtElectronAPI?: {
+  iii: any;
+  ldtElectronAPI: {
     send: (name, params) => void;
     invoke: (name, params) => Promise<any>;
     on: (key, listener) => void;

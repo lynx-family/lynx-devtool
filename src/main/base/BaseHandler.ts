@@ -1,5 +1,9 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 /**
- * 当一个request对应多个Response的时候，可以使用该类作为返回
+ * Use this class as return when one request corresponds to multiple responses
  */
 export class MultiResponse {
   private _data: any[] = [];

@@ -1,6 +1,9 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 import { getConfigItem, setConfigItem, LDT_DIR, getCurrentChannel, defaultLogger } from '@lynx-js/lynx-devtool-cli';
 import { kScopeName, kCliPackageName } from '@lynx-js/lynx-devtool-utils';
-import axios from 'axios';
 import { BrowserWindow, Menu, app, dialog, shell } from 'electron';
 import ProgressBar from 'electron-progressbar';
 import BasePage, { IPageParams } from './base/BasePage';
@@ -9,7 +12,9 @@ import menu from './utils/menu';
 import ldtServer from './utils/server';
 import path from 'path';
 import fs from 'fs';
-import { ViewMode } from 'packages/lynx-devtool-utils/src/baseDebugger';
+import { PageMode, ViewMode } from '@lynx-js/devtool-plugin-core/main';
+import { initHandlers } from './handlers';
+import ldtConfig from './utils/config';
 
 class App {
   win: BrowserWindow;
@@ -45,6 +50,8 @@ class App {
         }
       });
     }
+
+    initHandlers();
 
     // configure app
     app.commandLine.appendSwitch('enable-experimental-web-platform-features');
@@ -105,12 +112,17 @@ class App {
     await this.start({ ldtUrl: url });
   }
 
+  restart() {
+    this.win = this.mainPage.create({ ...this.mainPage.pageParams, forceRefresh: true });
+    this.win.focus();
+  }
+
   async start(params: IPageParams) {
     let mode = 0;
     const url = new URL(params.ldtUrl);
     const type = url.searchParams.get('type');
     const pageMode = url.searchParams.get('pageMode');
-    params.viewMode = ViewMode.LYNX;
+    params.viewMode = ViewMode.MOBILE;
 
     if (pageMode) {
       try {
@@ -143,6 +155,28 @@ class App {
         return { action: 'deny' };
       });
     }
+  }
+
+  switchPage(mode: PageMode) {
+    const { pageParams } = this.mainPage;
+    this.mainPage = this._providePage(mode);
+    this.win = this.mainPage.create(pageParams);
+    this.win.show();
+    this.win.focus();
+    ldtConfig.setConfig('pageMode', mode);
+  }
+
+  // Switch lynx/web mode in simulator
+  switchViewMode(mode: ViewMode) {
+    // TODO(talisk): We haven't support webview mode and simulator yet,
+    // hard code here temporarily
+    ldtConfig.setConfig('simulatorViewMode', 'lynx');
+    this.mainPage = this._providePage(PageMode.SIMULATOR);
+    const { pageParams } = this.mainPage;
+    const params = { ...pageParams };
+    params.viewMode = mode;
+    this.win = this.mainPage.create(params);
+    this.win.focus();
   }
 
   // Switch between dev mode

@@ -9,14 +9,14 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "experimentalDecorators": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "./",
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
       "@/renderer/*": ["src/renderer/*"],
-      "@/main/*": ["src/main/*"]
+      "@/main/*": ["src/main/*"],
     },
     "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true,
@@ -28,8 +28,15 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "outDir": "./dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/renderer/types"
+    ]
   },
-  "include": ["src", "preload.js"],
+  "include": [
+    "src/**/*",
+    "src/renderer/types/electron.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

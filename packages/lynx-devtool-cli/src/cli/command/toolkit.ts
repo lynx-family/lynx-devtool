@@ -6,13 +6,18 @@ import { DebugRouterConnector, UsbClient, getDriverReportService } from '@lynx-j
 import axios, { AxiosResponse } from 'axios';
 import { CliOptions, DEFAULT_ROOM_ID } from '../../config';
 import { EnvLogManager, defaultLogger } from '../../utils';
-import { UpdateResult, setupResource, tryUseChannel } from '../updator/updator';
+import { UpdateResult, getCurrentChannel, setupResource, tryUseChannel } from '../updator/updator';
 import * as utils from '../utils';
 import { handleUsbMessage, initDebugRouterConnector } from '../utils/usbClient/fakeClient';
 import { LDTCLIClient } from './LDTDriverClient';
 import { LDTMultiOpenCallback } from './LDTMultiOpenCallback';
 import httpServer from './httpServer';
 import { deleteCLI } from './handler';
+import path from 'node:path';
+import fs from 'node:fs';
+import { LDT_DIR } from '../utils';
+import { kCliPackageName, kScopeName } from '@lynx-js/lynx-devtool-utils';
+import { app } from 'electron';
 
 let driver: DebugRouterConnector;
 
@@ -195,6 +200,14 @@ async function startLocalServer(params: CliOptions | undefined): Promise<string>
   let lstAddress = `${host}/devtool?ws=${encodeURIComponent(wssPath)}&room=${roomId}`;
   // runType must be spelled, otherwise it will affect the indicator statistics
   lstAddress += `&type=${params?.runType ?? 'cli'}`;
+
+  const ldtPath = path.resolve(LDT_DIR, getCurrentChannel(), kScopeName, kCliPackageName);
+  const packageJsonPath = path.resolve(ldtPath, 'package.json');
+  const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
+  const packageJsonObj = JSON.parse(packageJson);
+
+  lstAddress += `&version=${packageJsonObj.version ?? 'unknown'}`;
+  lstAddress += `&is_prod=${app.isPackaged ?? false}`;
   // pass through query items config
   if (params?.queryItems) {
     Object.entries(params.queryItems).forEach(([queryKey, queryValue]) => {
@@ -209,7 +222,6 @@ async function startLocalServer(params: CliOptions | undefined): Promise<string>
   if (params?.openWebview !== false) {
     utils.startLDTPlatformProcess(lstAddress, params?.ignoreLDTApp);
   }
-  // Do not remove this code, otherwise the lower version of LDT desktop may not be able to exit
   process.send?.({ state: true, url: lstAddress } as UpdateResult);
 
   return lstAddress;
@@ -255,9 +267,13 @@ export function resetLDT(req: Record<string, any>) {
 }
 
 export function sendUsbMessageToWeb(id: number, message: string) {
+  console.log(`[${__filename}:sendUsbMessageToWeb`);
+  console.log('sendUsbMessageToWeb', id, message);
   if (driver?.wss) {
+    console.log('driver?.wss', driver?.wss);
     driver.handleUsbMessage(id, message);
   } else {
+    console.log('handleUsbMessage', id, message);
     handleUsbMessage({ id, message });
   }
 }

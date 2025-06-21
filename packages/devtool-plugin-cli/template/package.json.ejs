@@ -1,0 +1,41 @@
+{
+  "name": "<%= packageName %>",
+  "version": "1.0.0",
+  "description": "<%= packageDescription %>",
+  "exports": {
+    "./main": {
+      "require": "./dist/main/index.js",
+      "import": "./dist/main/index.js"
+    },
+    "./renderer": {
+      "require": "./dist/renderer/index.js",
+      "import": "./dist/renderer/index.js"
+    }
+  },
+  "simulatorPlugin": {
+    "name": "<%= pluginName %>",
+    "hasView": <%= pluginHasView %>,
+    "mode": "<%= pluginMode %>"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "dev": "webpack --mode development --watch",
+    "build": "webpack --mode production"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@lynx-js/devtool-plugin-core": "0.0.6-dev.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4"
+  }
+}

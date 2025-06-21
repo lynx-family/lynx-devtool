@@ -1,0 +1,12 @@
+{
+  "id": "devtool",
+  "name": "Debugger",
+  "description": "Simulator debugging tools, including logs, packet capture, performance monitoring, element inspection, JS debugging and other functions",
+  "isInternal": true,
+  "mode": "radio",
+  "icon": "IconElementStroked",
+  "target": "all",
+  "priority": 1,
+  "hasView": true,
+  "visible": true
+}

@@ -11,13 +11,14 @@
   ],
   "scripts": {
     "dev": "modern dev",
-    "build": "modern build",
-    "build:watch": "modern build -w"
+    "build": "modern build --config ./modern.config.ts",
+    "build:watch": "modern build -w --config ./modern.config.ts"
   },
   "dependencies": {},
   "devDependencies": {
     "@modern-js/module-tools": "2.63.2",
     "@modern-js/tsconfig": "2.63.2",
+    "@lynx-js/devtool-plugin-core": "workspace:*",
     "eslint-plugin-prettier": "~4.2.1",
     "typescript": "~4.9.4"
   }

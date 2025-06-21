@@ -1,5 +1,7 @@
 import { defineConfig } from '@rsbuild/core';
 import { pluginBabel } from '@rsbuild/plugin-babel';
+import { RspackVirtualModulePlugin } from 'rspack-plugin-virtual-module';
+import { generateMainVirtualModule } from './scripts/virtualModule';
 
 export default defineConfig({
   plugins: [
@@ -25,9 +27,7 @@ export default defineConfig({
       js: '[name].js'
     },
     filenameHash: false,
-    sourceMap: {
-      js: 'source-map'
-    }
+    sourceMap: true,
   },
   tools: {
     rspack: {
@@ -61,7 +61,12 @@ export default defineConfig({
       },
       output: {
         clean: false
-      }
+      },
+      plugins: [
+        new RspackVirtualModulePlugin({
+          virtualModules: generateMainVirtualModule(__dirname)
+        }),
+      ]
     }
   }
 }); 

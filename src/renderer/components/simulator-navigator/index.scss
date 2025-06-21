@@ -1,0 +1,32 @@
+.title-bar {
+  display: flex;
+  padding: 5px;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ccc;
+
+  input {
+    flex: 1;
+    border: 1px solid #ccc;
+    padding: 3px;
+    outline: none;
+    border-radius: 2px;
+    margin-left: 3px;
+
+    &:focus {
+      border: 1px solid #aaa;
+    }
+  }
+
+  svg {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  svg:hover {
+    background-color: #f0f0f0;
+    border-radius: 20px;
+  }
+}

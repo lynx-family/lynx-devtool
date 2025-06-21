@@ -1,198 +1,89 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { FileType, IPropsLanguage } from '@/renderer/types';
-import axios from 'axios';
-import { Buffer } from 'buffer';
-import FormData from 'form-data';
-import { queryService } from './query';
-import * as reduxUtils from './storeUtils';
-import { IDevice } from '@/renderer/types/device';
-import { queryIntranetIp } from '@/renderer/api/api';
+import { WEBVIEW, WEBVIEW_POPUP, LYNX, LYNX_POPUP } from '../constants';
 
-const separator = '___';
+const searchParams = new URLSearchParams(window.location.search);
+export const viewMode = searchParams.get('viewMode');
+export const isLynxMode = viewMode === 'lynx';
+export const isWebMode = viewMode === 'web';
 
-export function getQueryVariable(variable: string) {
-  return queryService.getQuery(variable);
-}
+export const WS = searchParams.get('ws');
+export const ROOM_ID = searchParams.get('room');
 
-export function jsonEscape(str: string) {
-  if (!str) {
-    return str;
-  }
-  return str.replace(/\n/g, '').replace(/\r/g, '').replace(/\t/g, '');
-}
-
-export const getDocumentMetaInfo = (name: string) => {
-  return document.querySelector(`meta[name="${name}"]`)?.getAttribute('content');
-};
-
-export const getRoomId = () => {
-  const key = 'roomId';
-  const roomId = getDocumentMetaInfo(key);
-  return roomId ? roomId : getQueryVariable(key);
-};
-
-export const getWssPort = () => {
-  return getQueryVariable('wssPort') ?? '9783';
-};
-
-export const getWsUrl = () => {
-  return `ws://localhost:${getWssPort()}/mdevices/page/android`;
-};
-
-export async function uploadFileBufferToLocal(buffer: Array<Buffer>, fileName = '', type: FileType) {
-  const form = new FormData();
-  form.append('file', new Blob(buffer), fileName);
-  form.append('type', type);
-  const config = {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  };
-  const res = await axios.post('/uploadFileToLocal', form, config);
-  return Promise.resolve(res.data);
-}
-
-export async function getCurrentIntranetIp(useLan = false) {
+export function isValidUrl(url: string): boolean {
   try {
-    const res = await queryIntranetIp(useLan);
-    if (res?.status === 200) {
-      return res?.data?.data;
-    } else {
-      console.error('queryIntranetIp error', res);
-      return null;
+    new URL(url);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function checkContentType(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    if (response.status >= 400) {
+      return true;
     }
-  } catch (error) {
-    console.error('queryIntranetIp error', error);
+    const contentType = response.headers.get('content-type') ?? response.headers.get('Content-Type');
+    return contentType?.includes('text/html') ?? false;
+  } catch (_) {
+    return true;
+  }
+}
+
+export function getUrlFromSchema(schema: string): string | null {
+  try {
+    const url = new URL(schema);
+    if (url.protocol.startsWith('http')) {
+      return schema;
+    }
+    return url.searchParams.get('url') || url.searchParams.get('surl');
+  } catch (_) {
     return null;
   }
 }
 
-export const getViewType = () => {
-  const key = 'viewType';
-  const viewType = getDocumentMetaInfo(key);
-  return viewType ? viewType : getQueryVariable(key);
-};
-
-export const getDeviceNetwork = (network: string) => {
-  return network === 'USB' ? network : 'WiFi';
-};
-
-export const downloadFile = (url: any) => {
-  const eleLink = document.createElement('a');
-  eleLink.style.display = 'none';
-  eleLink.href = url;
-  document.body.appendChild(eleLink);
-  eleLink.click();
-  document.body.removeChild(eleLink);
-};
-
-export function getFileName() {
-  const client: any = reduxUtils.getSelectClient();
-  let fileName = `${client?.info?.App}(${client?.info?.deviceModel})${separator}${new Date().toISOString()}`;
-  // trim
-  fileName = `${fileName.replace(/\s*/g, '')}`;
-  return fileName;
-}
-
-export function zeroFill(n: number): string {
-  return 0 <= n && n <= 9 ? `0${n}` : `${n}`;
-}
-
-export function dateString(data: Date) {
-  const numbers: string[] = [];
-  numbers.push(zeroFill(data.getFullYear()));
-  numbers.push(zeroFill(data.getMonth() + 1));
-  numbers.push(zeroFill(data.getDate()));
-  numbers.push(zeroFill(data.getHours()));
-  numbers.push(zeroFill(data.getMinutes()));
-  numbers.push(zeroFill(data.getSeconds()));
-  numbers.push(zeroFill(data.getMilliseconds()));
-  return numbers.join('-');
-}
-
-export function getQueries(url: string = location.href): any {
-  const query: any = {};
+export const extractUrlFromScheme = (scheme: string): string | null => {
   try {
-    const search = new URL(url).search.substring(1);
-    if (search && search.length > 0) {
-      const vars = search.split('&');
-      vars.forEach((item) => {
-        const pair = item.split('=');
-        query[pair[0]] = pair[1];
-      });
-    }
-  } catch (e) {}
-  return query;
-}
-
-export function getQuery(key: string, query: string = location.search): string | null {
-  if (query.startsWith('?')) {
-    // eslint-disable-next-line no-param-reassign
-    query = query.substring(1);
+    const url = new URL(scheme);
+    const urlParam = url.searchParams.get('url');
+    return urlParam ? decodeURIComponent(urlParam) : null;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-  const vars = query.split('&');
-  // eslint-disable-next-line @typescript-eslint/prefer-for-of
-  for (let i = 0; i < vars.length; i++) {
-    const pair = vars[i].split('=');
-    if (pair[0] === key) {
-      return pair[1];
-    }
-  }
-  return null;
-}
+};
 
-export function getHeader(headers: any | null, key: string): string {
-  if (!headers) {
+export const parseSchemeUrl = (schemeUrl: string) => {
+  if (!schemeUrl) {
+    return Array(1).fill({ key: '', value: '' });
+  }
+  const [protocol, queryString = ''] = schemeUrl.split('?');
+  if (!queryString) {
+    return [{ key: 'protocol', value: protocol }];
+  }
+
+  const paramsArray = queryString.split('&').map((param) => {
+    const [key, value] = param.split('=');
+    return { key, value: decodeURIComponent(value) };
+  });
+
+  return [{ key: 'protocol', value: protocol }, ...paramsArray];
+};
+
+export const buildSchemeUrl = (paramsArray: { key: string; value: string }[]): string => {
+  if (!paramsArray || paramsArray.length === 0) {
     return '';
   }
-  const findKey = Object.keys(headers).find((item) => item.toLowerCase() === key);
-  if (findKey) {
-    return headers[findKey];
-  } else {
-    return '';
-  }
-}
 
-export function getContentType(headers: any): string {
-  return getHeader(headers, 'content-type');
-}
+  const protocol = paramsArray.find((param) => param.key === 'protocol')?.value || '';
+  const queryString = paramsArray
+    .filter((param) => param.key !== 'protocol')
+    .map((param) => `${param.key}=${encodeURIComponent(param.value)}`)
+    .join('&');
 
-export function getLanguage(contentType?: string): IPropsLanguage {
-  if (contentType?.includes('json')) {
-    return 'json';
-  }
-  if (contentType?.includes('xml')) {
-    return 'xml';
-  }
-  if (contentType?.includes('javascript')) {
-    return 'javascript';
-  }
-  if (contentType?.includes('html')) {
-    return 'html';
-  }
-  if (contentType?.includes('typescript')) {
-    return 'typescript';
-  }
-  if (contentType?.includes('css')) {
-    return 'css';
-  }
-  if (contentType?.includes('text')) {
-    return 'plaintext';
-  }
-  if (contentType?.includes('schema')) {
-    return 'schema';
-  }
-  return 'json';
-}
-
-export const getAppProcess = (device: IDevice) => {
-  const { info } = device;
-  if (info?.AppProcessName) {
-    const arr = info.AppProcessName.split(':');
-    if (arr.length === 2) {
-      return `:${arr[1]}`;
-    }
-  }
-  return null;
+  return `${protocol}?${queryString}`;
 };

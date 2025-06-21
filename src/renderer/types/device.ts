@@ -7,6 +7,7 @@ export interface ISessionInfo {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   session_id: number;
   type: 'web' | 'worker' | '';
+  // lynx devtool
   screenshot?: string;
   engineType?: string;
   targets?: Set<string>;

@@ -1,0 +1,7 @@
+import { definePlugin } from '@lynx-js/devtool-plugin-core/main';
+
+export default definePlugin({
+  onCreate(context, params) {
+    console.log('custom plugin onCreate: ', params);
+  }
+});

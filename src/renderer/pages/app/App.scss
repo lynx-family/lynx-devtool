@@ -1,0 +1,57 @@
+@import '~normalize.css';
+
+body,
+#root {
+  background-color: #e8eaed;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+* {
+  box-sizing: border-box;
+}
+
+.ldt-navbar {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 2px 15px;
+  height: 50px;
+}
+
+.ldt-app {
+  display: flex;
+  flex: 1;
+  background-color: #f4f4f4;
+  border-top: 1px solid #ccc;
+
+}
+
+/* Define overall scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px; /* Vertical scrollbar width */
+  height: 6px; /* Horizontal scrollbar height */
+}
+
+/* Define scrollbar track */
+::-webkit-scrollbar-track {
+  background: transparent; /* Track background color */
+  border-radius: 2px; /* Track border radius */
+}
+
+/* Define scrollbar thumb */
+::-webkit-scrollbar-thumb {
+  background: #bbb; /* Thumb background color */
+  border-radius: 2px; /* Thumb border radius */
+}
+
+/* Thumb style on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa; /* Thumb background color on hover */
+}
+
+
+/* Compatible with Firefox browser */
+* {
+  scrollbar-width: thin; /* Scrollbar width */
+  scrollbar-color: #aaa #f1f1f1; /* Thumb color and track color */
+}

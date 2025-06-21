@@ -1,0 +1,85 @@
+
+.tool-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 280px;
+
+  .tool-bar-select {
+    width: 100px;
+
+    .semi-select-selection {
+      font-size: 11px;
+    }
+
+  }
+
+  .tool-bar-button {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+  }
+}
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+
+  .tooltip-content-item {
+    display: flex;
+    width: 50px;
+    height: 50px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .tooltip-content-item-icon {
+    font-size: 24px;
+  }
+
+  .tooltip-content-item-title {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+}
+
+.tooltip-content button {
+  background-color: #f0f0f0; // Button background color
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #e0e0e0; // Background color on hover
+  }
+}
+
+
+.custom-device-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+.simulator-custom-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+
+  .semi-select-delete-icon {
+    font-size: 13px;
+    color: red;
+    margin-left: 10px;
+  }
+}

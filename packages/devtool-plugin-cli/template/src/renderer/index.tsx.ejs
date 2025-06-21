@@ -1,0 +1,7 @@
+import { definePlugin } from '@lynx-js/devtool-plugin-core/renderer';
+import React, { useState } from 'react';
+
+export default definePlugin(() => () => {
+  const [a] = useState();
+  return <h1>Npm plugin works!</h1>;
+});

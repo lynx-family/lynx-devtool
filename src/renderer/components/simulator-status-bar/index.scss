@@ -1,0 +1,14 @@
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(0, 0, 0, 0.8);
+  padding: 10px 15px;
+  font-size: 13px;
+  border-radius: 10px;
+  align-items: center;
+}
+
+.status-bar span {
+  margin: 0 5px;
+  align-items: center;
+}

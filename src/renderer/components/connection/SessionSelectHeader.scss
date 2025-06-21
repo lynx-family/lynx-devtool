@@ -1,0 +1,43 @@
+.device-session-info {
+  padding: 10px;
+
+  .panel-header {
+    font-weight: bold;
+    color: black;
+    font-size: 13px;
+  }
+
+  .device-info-item {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+    
+
+    .left-panel-title {
+      color: gray;
+      display: inline-block;
+      width: 75px;
+    }
+
+    .device-info-item-head {
+      font-weight: bold;
+      margin: 3px 0;
+    }
+
+    .right-panel-input {
+      margin-left: 5px;
+    }
+
+    .icon-help-circle {
+      position: relative;
+      left: 5px;
+      color: gray;
+    }
+
+    .left-panel-value-ono {
+      font-family: monospace;
+      flex: 1;
+    }
+  }
+}

@@ -2,7 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { WebContents, BrowserWindow } from 'electron/main';
+import { BrowserWindow } from 'electron/main';
+import { ViewMode } from '@lynx-js/devtool-plugin-core/dist/types/main';
 
 export abstract class BaseHandler {
   abstract getName(): string;
@@ -13,11 +14,6 @@ export enum PageMode {
   MOBILE = 0,
   SIMULATOR = 1,
   SIMULATOR_LYNX = 2
-}
-
-export enum ViewMode {
-  LYNX = 'lynx',
-  WEB = 'web'
 }
 
 export interface IPageParams {

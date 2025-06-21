@@ -2,12 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { getBuildVersion, getRuntimeType, isInElectron, isOfflineMode } from './const';
-import { getSelectClient } from './storeUtils';
-import { getGitInfo, getLDTVersion } from '@/renderer/api/api';
-import { getStore } from './flooks';
-import useUser from '@/renderer/store/user';
 import { StatisticsCustomEventData } from '@lynx-js/lynx-devtool-utils';
+import { queryService } from './query';
 
 export interface IStatistics {
   init(data: { bid: string; release: string }): void;
@@ -20,6 +16,11 @@ export interface IStatistics {
     metrics: Record<string, any>;
   }): void;
 }
+
+export const STATISTICS_EVENT_NAME = {
+  SIMULATOR: 'simulator',
+  PLUGIN: 'plugin'
+};
 
 class StatisticsManager {
   private static instance: IStatistics;
@@ -45,47 +46,25 @@ export async function initStatistics() {
   const instance = StatisticsManager.getInstance();
   instance?.init({
     bid: 'lynx_devtool',
-    release: getBuildVersion()
+    release: queryService.getQuery('ldt_version') ?? ''
   });
   
-  instance?.contextSet('runtime_type', getRuntimeType());
-  instance?.contextSet('runtime_env', isInElectron() ? 'electron' : 'browser');
-
-  if (isOfflineMode()) {
-    try {
-      const resp = await getLDTVersion();
-      const { code, data } = resp.data;
-      if (code === 0) {
-        instance?.contextSet('cli_version', data);
-      }
-    } catch (error) {}
-  }
-
-  const { user } = getStore(useUser);
-
-  try {
-    const resp = await getGitInfo();
-    const { code, data } = resp.data;
-    if (code === 0) {
-      mergeContext(data);
-    }
-  } catch (error) {}
+  instance?.contextSet('type', queryService.getQuery('type') ?? '');
+  instance?.contextSet('page_mode', queryService.getQuery('pageMode') ?? '');
+  instance?.contextSet('view_mode', queryService.getQuery('viewMode') ?? '');
 
   instance?.start();
 }
 
 export function sendStatisticsEvent(data: StatisticsCustomEventData) {
-  const selectedDevice = getSelectClient();
   const { name, categories, metrics } = data;
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Statistics]: ', name, categories, metrics);
+  }
   
   StatisticsManager.getInstance()?.sendEvent({
     name,
-    categories: {
-      appId: selectedDevice.info?.appId ?? selectedDevice.info?.App,
-      did: selectedDevice.info?.did ?? '',
-      osType: selectedDevice.info?.osType ?? 'unknown',
-      ...categories
-    },
+    categories: categories ?? {},
     metrics: metrics ?? {}
   });
 }

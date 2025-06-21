@@ -104,59 +104,6 @@ export async function deleteLocalFile(req: any, res: any) {
   }
 }
 
-export async function uploadFileToCDN(req: any, res: any, host: string) {
-  const sendError = (error: any) => {
-    res.send({
-      code: -1,
-      message: error
-    });
-  };
-  try {
-    const type: FileType = req?.query?.type;
-    const suffix = fileSuffix(type);
-    const fileName = req?.query?.file;
-    const filePath = `${uploadFilePath}/${fileName}`;
-    if (fileName && fs.existsSync(filePath)) {
-      const upFileName = `${new Date().getTime()}${suffix}`;
-      // const response = await utils.uploadFileToTos(filePath, upFileName);
-      // if (response?.status === 200 && response?.data?.data) {
-      //   const tosUrl = response.data.data;
-      //   // eslint-disable-next-line max-depth
-      //   if (tosUrl?.indexOf(tosPrefix) >= 0) {
-      //     let tosName = tosUrl.replace(tosPrefix, '');
-      //     tosName = tosName.replace(suffix, '');
-      //     tosName = fileName.replace(suffix, `${separator}${tosName}${suffix}`);
-      //     const newFilePath = `${uploadFilePath}/${tosName}`;
-      //     // rename trace file
-      //     fs.renameSync(filePath, newFilePath);
-      // // Upload successfully
-      //     res.send({
-      //       code: 0,
-      //       file: tosName,
-      //       tos: response.data.data,
-      //       url: `${host}/localResource/file/${tosName}`,
-      //       message: 'success'
-      //     });
-      //   } else {
-      //     res.send({
-      //       code: -1,
-      //       message: 'faild'
-      //     });
-      //   }
-      // } else {
-      //   res.send({
-      //     code: -1,
-      //     message: response.statusText
-      //   });
-      // }
-    } else {
-      sendError(`File not exists: ${filePath}`);
-    }
-  } catch (error) {
-    sendError(error);
-  }
-}
-
 export async function queryIntranetIp(req: any, res: any) {
   try {
     let vpnFirst = true;

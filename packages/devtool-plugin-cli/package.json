@@ -1,0 +1,46 @@
+{
+  "name": "@lynx-js/devtool-plugin-cli",
+  "version": "0.0.3",
+  "types": "./dist/types/index.d.ts",
+  "jsnext:source": "./src/index.ts",
+  "main": "./dist/lib/index.js",
+  "module": "./dist/es/index.js",
+  "bin": {
+    "simulator-cli": "./dist/lib/index.js"
+  },
+  "scripts": {
+    "dev": "modern dev",
+    "build": "modern build --config ./modern.config.ts",
+    "build:watch": "modern build -w --config ./modern.config.ts",
+    "new": "modern new",
+    "upgrade": "modern upgrade"
+  },
+  "dependencies": {
+    "commander": "12.1.0",
+    "ejs": "3.1.10",
+    "execa": "5.1.1",
+    "inquirer": "12.0.1"
+  },
+  "devDependencies": {
+    "@modern-js/module-tools": "2.63.2",
+    "@types/ejs": "^3.1.1",
+    "@types/node": "~16.11.7",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-config-standard-react": "^13.0.0",
+    "eslint-config-standard-ts": "^21.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint-plugin-prettier": "~4.2.1",
+    "prettier": "^2.8.8",
+    "rimraf": "~3.0.2",
+    "typescript": "~5.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
