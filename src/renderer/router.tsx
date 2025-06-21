@@ -3,10 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 import DevToolSvg from '@/assets/icons/devtool.svg';
-import { ToolOutlined } from '@ant-design/icons';
+import { ToolOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { t } from 'i18next';
 import { Suspense, lazy, useMemo } from 'react';
 import CacheRoutes, { RouterConfig } from './components/CacheRoutes/CacheRoutes';
+import TestBench from './components/TestBench';
 
 const DevTool = lazy(() => import('./containers/DevTool/DevTool'));
 
@@ -24,6 +25,14 @@ export function getRouters(): Array<RouterConfig> {
       icon: <ToolOutlined style={{ fontSize: 18 }} />,
       path: '/devtool',
       element: <DevTool />,
+      isMenu: true,
+      keepAlive: true
+    },
+    {
+      title: 'Lynx TestBench',
+      icon: <VideoCameraOutlined style={{ fontSize: 18 }} />,
+      path: '/testbench',
+      element: <TestBench />,
       isMenu: true,
       keepAlive: true
     }
