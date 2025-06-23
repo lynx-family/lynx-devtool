@@ -1,4 +1,4 @@
-name: Build devtools packages
+name: Build All Packages
 
 on:
   push:
