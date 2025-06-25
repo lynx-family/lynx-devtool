@@ -24,7 +24,7 @@
     "unzipResources": "bash scripts/unzip-resources.sh"
   },
   "dependencies": {
-    "@lynx-js/debug-router-connector": "0.0.3",
+    "@lynx-js/debug-router-connector": "0.0.5",
     "@lynx-js/lynx-devtool-utils": "workspace:*",
     "asar": "^3.2.0",
     "async": "3.2.4",

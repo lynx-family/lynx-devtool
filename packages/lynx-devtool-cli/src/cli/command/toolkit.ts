@@ -157,6 +157,7 @@ async function startLocalServer(params: CliOptions | undefined): Promise<string>
       enableWebSocket: true,
       enableAndroid: true,
       enableIOS: true,
+      enableHarmony: true,
       enableDesktop: true,
       websocketOption: { roomId }
     });
