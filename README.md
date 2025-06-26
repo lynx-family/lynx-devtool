@@ -43,6 +43,7 @@ An Electron-based developer tool for Lynx, providing mobile debugging features.
 - pnpm = 7.33.6
 - Git
 - Python3
+- python-is-python3
 
 ### Node.js Version Management
 
@@ -76,13 +77,13 @@ cd lynx-devtool
 pnpm install
 ```
 
-3. Sync DevTools dependencies and build it:
+4. Sync DevTools dependencies and build it:
 
 ```bash
 pnpm run build:devtools-frontend-lynx
 ```
 
-4. Start development environment:
+5. Start development environment:
 
 ```bash
 pnpm run dev
