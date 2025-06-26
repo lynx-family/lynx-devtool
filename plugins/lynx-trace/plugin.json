@@ -1,0 +1,11 @@
+{
+  "id": "lynx-trace",
+  "name": "Trace",
+  "description": "Lynx Performance Tool",
+  "isInternal": true,
+  "mode": "radio",
+  "target": "mobile",
+  "priority": 2,
+  "hasView": true,
+  "visible": true
+}

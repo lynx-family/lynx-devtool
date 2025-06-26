@@ -1,0 +1,4 @@
+[submodule "packages/lynx-trace"]
+	path = packages/lynx-trace
+	url = https://github.com/lynx-family/lynx-trace.git
+	branch = develop/v50.x

@@ -1,0 +1,28 @@
+/**
+  Copyright 2025 The Lynx Authors. All rights reserved.
+  Licensed under the Apache License Version 2.0 that can be found in the
+  LICENSE file in the root directory of this source tree.
+*/
+
+.custom-notification-warning {
+  color: #664d03;
+  background: #fffbe6;
+  padding: 4px;
+  border-radius: 6px;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 22px;
+}
+.custom-notification-warning .important {
+  color: #faad14;
+  font-weight: 600;
+}
+.custom-notification-warning a {
+  color: #faad14;
+  font-weight: 600;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.custom-notification-warning a:hover {
+  color: #d48806;
+}
