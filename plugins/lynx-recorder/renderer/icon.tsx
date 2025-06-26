@@ -2,18 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import LynxRecorderLogo from './assets/lynx-recorder-logo.png';
-import { Image } from 'antd';
+import React from 'react';
+import { VideoCameraAddOutlined } from '@ant-design/icons';
 const Index = () => {
   return (
-    <Image
-      src={LynxRecorderLogo}
-      style={{
-        width: 20,
-        height: 20
-      }}
-      preview={false}
-    />
+    <VideoCameraAddOutlined />
   );
 };
 
