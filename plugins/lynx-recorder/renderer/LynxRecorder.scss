@@ -1,0 +1,33 @@
+.lynxrecorder-header {
+  padding: 5px 5px 0px 5px;
+}
+.lynxrecorder-content {
+  padding: 5px;
+  height: calc(100vh - 150px);
+
+  .semi-table-row-head {
+    color: var(--semi-color-text1) !important;
+  }
+
+  .semi-table-empty {
+    .semi-empty-vertical {
+      height: calc(100vh - 210px);
+    }
+  }
+}
+
+.lynxrecorder-qrcode-pop {
+  padding: 15px;
+}
+
+.status-failure {
+  color: var(--semi-color-danger);
+}
+
+.status-success {
+  color: var(--semi-color-success);
+}
+
+.clear-btn {
+  margin-left: 10px;
+}

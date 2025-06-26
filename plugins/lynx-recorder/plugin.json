@@ -1,0 +1,11 @@
+{
+  "id": "lynx-recorder",
+  "name": "LynxRecorder",
+  "description": "Lynx Recorder",
+  "isInternal": true,
+  "mode": "radio",
+  "target": "mobile",
+  "priority": 3,
+  "hasView": true,
+  "visible": true
+}
