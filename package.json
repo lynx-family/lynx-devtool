@@ -15,6 +15,7 @@
     "fetch:depot_tools": "cd packages/devtools-frontend-lynx && scripts/fetch-depot-tools.sh",
     "sync:devtools-gn": "gclient sync --gclientfile=.gclient --deps=all",
     "build:devtools": "cd packages/devtools-frontend-lynx && scripts/build-lynx-devtools.sh",
+    "build:lynx-trace": "bash scripts/build-lynx-trace-output.sh",
     "sync:devtools-dist": "scripts/sync-devtools-output.sh",
     "production:mac-arm64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --arm64",
     "production:mac-x64": "pnpm run clean && pnpm run build:all && cross-env NODE_ENV=production electron-builder --x64"
@@ -144,7 +145,7 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": "7.33.6"
+    "pnpm": ">=7.33.6"
   },
   "packageManager": "pnpm@7.33.6"
 }

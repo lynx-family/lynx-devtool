@@ -19,6 +19,8 @@ setup:
 build:
 	@echo "Building DevTools frontend..."
 	npx pnpm@$(PNPM_VERSION) run build:devtools-frontend-lynx
+	@echo "Building lynx-trace frontend..."
+	npx pnpm@$(PNPM_VERSION) run build:lynx-trace
 
 install:
 	@echo "Installing project dependencies..."

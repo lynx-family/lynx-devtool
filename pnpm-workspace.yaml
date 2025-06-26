@@ -1,3 +1,7 @@
 packages:
-  - 'packages/*'
+  - 'packages/devtool-plugin-cli'
+  - 'packages/devtool-plugin-core'
+  - 'packages/devtools-frontend-lynx'
+  - 'packages/lynx-devtool-cli'
+  - 'packages/lynx-devtool-utils'
   - 'src'

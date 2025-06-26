@@ -49,6 +49,7 @@ class HttpServer {
       const app = express();
       const filePath = utils.getUploadFilePath();
       const devtoolPath = `${__dirname}/../../../static/devtool`;
+      const tracePath = `${__dirname}/../../../static/trace`;
 
       // Set the save upload file path
       const storage = multer.diskStorage({
@@ -72,6 +73,7 @@ class HttpServer {
 
       app.use('/localResource/file', express.static(filePath));
       app.use('/localResource/devtool', express.static(devtoolPath, disableCacheConfig));
+      app.use('/localResource/trace', express.static(tracePath));
 
       // apis
       app.post('/uploadFileToLocal', (req: any, res: any) => {
