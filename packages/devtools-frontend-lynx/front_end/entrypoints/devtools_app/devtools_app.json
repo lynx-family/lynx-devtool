@@ -23,7 +23,8 @@
     { "name": "panels/timeline" },
     { "name": "panels/web_audio" },
     { "name": "panels/webauthn"},
-    { "name": "panels/media" }
+    { "name": "panels/media" },
+    { "name": "panels/preact_devtools" }
   ],
   "extends": "shell"
 }
