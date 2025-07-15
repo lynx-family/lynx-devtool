@@ -48,9 +48,17 @@ This project uses corepack to manage package manager versions. Please follow the
 # Enable corepack
 corepack enable
 
-# Install and use specified Node.js version with nvm
+# Install and use specified Node.js version with nvm or NVS
+
+#For NVM:
 nvm install 18.20.2
 nvm use 18.20.2
+
+#For NVS:
+nvs add 18.20.2
+nvs use 18.20.2
+```
+
 
 # Verify versions
 node -v  # Should display v18.20.2
@@ -88,12 +96,23 @@ pnpm run dev
 
 ```bash
 make setup
-make build
 make install
+make build
 make dev
 ```
 
 or just call `make all`
+
+## Windows
+
+```bash
+setup.bat setup
+setup.bat install
+setup.bat build
+setup.bat dev
+```
+
+or just call `setup.bat`
 
 ## Tech Stack
 

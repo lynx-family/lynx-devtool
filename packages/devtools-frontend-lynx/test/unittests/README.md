@@ -23,13 +23,13 @@ describe('The test suite that you want to run', () => {
 ## Obtaining code coverage
 
 We can collect code coverage for the source code that is tested with unit tests.
-You can run `COVERAGE=1 npm run auto-unittest` to obtain code coverage for the whole `front_end` folder.
+You can run `COVERAGE=1 pnpm run auto-unittest` to obtain code coverage for the whole `front_end` folder.
 However, there is some preprocessing overhead for collecting coverage.
 You can use `COVERAGE_FOLDERS` to only preprocess specific folders for code coverage:
 
 ```bash
-COVERAGE_FOLDERS='front_end/ui/components' npm run auto-unittest
-COVERAGE_FOLDERS='front_end/{ui/components,core/common}' npm run auto-unittest
+COVERAGE_FOLDERS='front_end/ui/components' pnpm run auto-unittest
+COVERAGE_FOLDERS='front_end/{ui/components,core/common}' pnpm run auto-unittest
 ```
 
 ## Inspecting detailed errors

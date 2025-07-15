@@ -8,7 +8,7 @@
 
 /**
  * This file is auto-generated, do not edit manually. *
- * Re-generate with: npm run generate-protocol-resources.
+ * Re-generate with: pnpm run generate-protocol-resources.
  */
 
 declare namespace Protocol {

@@ -41,7 +41,7 @@
     "url": "https://github.com/acornjs/acorn.git"
   },
   "scripts": {
-    "prepare": "cd ..; npm run build:loose"
+    "prepare": "cd ..; pnpm run build:loose"
   },
   "license": "MIT"
 }
