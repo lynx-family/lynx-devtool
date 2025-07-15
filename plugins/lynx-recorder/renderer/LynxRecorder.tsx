@@ -13,7 +13,7 @@ import './LynxRecorder.scss';
 import copyTextToClipboard from 'copy-text-to-clipboard';
 import { downloadFile, getFileName } from './utils/common';
 import UnknownScreenImg from './assets/unknown_screen.png';
-import { checkValid } from './utils/aux';
+import { checkValid } from './utils/helper';
 import { ERemoteDebugDriverExternalEvent } from '@lynx-js/remote-debug-driver';
 import { getStore } from './utils/flooks';
 
