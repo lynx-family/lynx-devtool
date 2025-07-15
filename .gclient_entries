@@ -3,7 +3,7 @@ entries = {
   'packages/devtools-frontend-lynx/build': 'https://chromium.googlesource.com/chromium/src/build.git@fd86d60f33cbc794537c4da2ef7e298d7f81138e',
   'packages/devtools-frontend-lynx/buildtools': 'https://chromium.googlesource.com/chromium/src/buildtools.git@37dc929ecb351687006a61744b116cda601753d7',
   'packages/devtools-frontend-lynx/buildtools/clang_format/script': 'https://chromium.googlesource.com/external/github.com/llvm/llvm-project/clang/tools/clang-format.git@99803d74e35962f63a775f29477882afd4d57d94',
-  'packages/devtools-frontend-lynx/buildtools/mac:gn/gn/mac-amd64': 'https://chrome-infra-packages.appspot.com/gn/gn/mac-amd64@git_revision:b2d77ab1373192d1532af94b68fb8bab727b0e5b',
+  'packages/devtools-frontend-lynx/buildtools/win:gn/gn/windows-amd64': 'https://chrome-infra-packages.appspot.com/gn/gn/windows-amd64@git_revision:b2d77ab1373192d1532af94b68fb8bab727b0e5b',
   'packages/devtools-frontend-lynx/third_party/depot_tools': 'https://chromium.googlesource.com/chromium/tools/depot_tools.git@a806594b95a39141fdbf1f359087a44ffb2deaaf',
   'packages/devtools-frontend-lynx/third_party/inspector_protocol': 'https://chromium.googlesource.com/deps/inspector_protocol@32cf5f2bf4dc20c73ead291e68d2e2f6b638cd57',
 }
