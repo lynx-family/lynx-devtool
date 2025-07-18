@@ -354,6 +354,15 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
 
     postPluginMessage("uitree-panel", { UINodeId: node.id });
     postPluginMessage("uitree-drawer", { UINodeId: node.id });
+    window.postMessage({
+      type: 'panel:preact_devtools',
+      content: {
+        type: 'ScreenCastPanelUINodeIdSelected',
+        message: {
+          UINodeId: node.id,
+        },
+      },
+    }, '*')
 
     if (event.type === 'mousemove') {
       this._updateHighlightInOverlayAndRepaint({ node, selectorList: undefined }, this._inspectModeConfig);
