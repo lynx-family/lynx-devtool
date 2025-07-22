@@ -18,6 +18,7 @@ import debugDriver from '../utils/debugDriver';
 import create from '../utils/flooks';
 import { queryService } from '../utils/query';
 import { sendStatisticsEvent } from '../utils/statisticsUtils';
+import * as switchUtils from '../utils/switchUtils';
 
 export type ConnectionStoreType = ReturnType<typeof connectionStore>;
 
@@ -391,40 +392,60 @@ const connectionStore = (store: any) => ({
   },
 
   async setStopAtEntry(value: boolean) {
-    const { selectedDevice } = store() as ConnectionStoreType;
+    const { selectedDevice, deviceInfoMap } = store() as ConnectionStoreType;
     const { clientId } = selectedDevice;
-    if (clientId) {
+    if (clientId === undefined) {
+      return;
+    }
+    try {
+      const deviceInfo = deviceInfoMap[clientId];
+      if (deviceInfo === undefined) {
+        return;
+      }
       await debugDriver.sendCustomMessageAsync({
         type: ECustomDataType.D2RStopAtEntry,
         params: { stop_at_entry: value },
         useParamsAsData: true,
         clientId
       });
-      const { deviceInfoMap } = store() as ConnectionStoreType;
-      const deviceInfo = deviceInfoMap[clientId];
-      if (deviceInfo) {
-        deviceInfo.stopAtEntry = value;
-        store({ deviceInfoMap: { ...deviceInfoMap } });
-      }
+      deviceInfo.stopAtEntry = value;
+      store({ deviceInfoMap: { ...deviceInfoMap } });
+    } catch (error: any) {
+      console.error(error.toString());
     }
   },
-  async setStopLepusAtEntry(value: boolean) {
-    const { selectedDevice } = store() as ConnectionStoreType;
+  asysetStopAtEntry(value: boolean) {
+    switchUtils.setStopAtEntry('DEFAULT', value);
+    const { setStopAtEntryLegacy } = store();
+    setStopAtEntryLegacy(value);
+  },
+  async setStopLepusAtEntryLegacy(value: boolean) {
+    const { selectedDevice, deviceInfoMap } = store() as ConnectionStoreType;
     const { clientId } = selectedDevice;
-    if (clientId) {
+    if (clientId === undefined) {
+      return;
+    }
+    try {
+      const deviceInfo = deviceInfoMap[clientId];
+      if (deviceInfo === undefined) {
+        return;
+      }
       await debugDriver.sendCustomMessageAsync({
         type: ECustomDataType.D2RStopLepusAtEntry,
         params: { stop_at_entry: value },
         useParamsAsData: true,
         clientId
       });
-      const { deviceInfoMap } = store() as ConnectionStoreType;
-      const deviceInfo = deviceInfoMap[clientId];
-      if (deviceInfo) {
-        deviceInfo.stopLepusAtEntry = value;
-        store({ deviceInfoMap: { ...deviceInfoMap } });
-      }
+      deviceInfo.stopLepusAtEntry = value;
+      store({ deviceInfoMap: { ...deviceInfoMap } });
+    } catch (error: any) {
+      console.error(error.toString());
     }
+  },
+  setStopLepusAtEntry(value: boolean) {
+    switchUtils.setStopAtEntry('MTS', value);
+    const { setStopLepusAtEntryLegacy } = store();
+    setStopLepusAtEntryLegacy(value);
   },
   updateSessionScreenshot(sessionId: number, data: string) {
     const { deviceInfoMap, selectedDevice } = store() as ConnectionStoreType;
