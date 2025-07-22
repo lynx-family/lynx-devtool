@@ -1110,24 +1110,28 @@ export class ElementsTreeOutline extends UI.TreeOutline.TreeOutline {
       originalScrollTop = treeOutlineContainerElement ? treeOutlineContainerElement.scrollTop : 0;
       this._element.classList.add('hidden');
     }
-    const rootNodeUpdateRecords = this._rootDOMNode && this._updateRecords.get(this._rootDOMNode);
-    if (rootNodeUpdateRecords && rootNodeUpdateRecords.hasChangedChildren()) {
-      // Document's children have changed, perform total update.
-      this.update();
-    } else {
-      for (const [node, record] of this._updateRecords) {
-        if (record.hasChangedChildren()) {
-          this._updateModifiedParentNode((node as SDK.DOMModel.DOMNode));
-        } else {
-          this._updateModifiedNode((node as SDK.DOMModel.DOMNode));
+    
+    try {
+      const rootNodeUpdateRecords = this._rootDOMNode && this._updateRecords.get(this._rootDOMNode);
+      if (rootNodeUpdateRecords && rootNodeUpdateRecords.hasChangedChildren()) {
+        // Document's children have changed, perform total update.
+        this.update();
+      } else {
+        for (const [node, record] of this._updateRecords) {
+          if (record.hasChangedChildren()) {
+            this._updateModifiedParentNode((node as SDK.DOMModel.DOMNode));
+          } else {
+            this._updateModifiedNode((node as SDK.DOMModel.DOMNode));
+          }
         }
       }
-    }
-
-    if (hidePanelWhileUpdating) {
-      this._element.classList.remove('hidden');
-      if (treeOutlineContainerElement && originalScrollTop) {
-        treeOutlineContainerElement.scrollTop = originalScrollTop;
+    } finally {
+      // Ensure that the 'hidden' class is removed no matter what.
+      if (hidePanelWhileUpdating) {
+        this._element.classList.remove('hidden');
+        if (treeOutlineContainerElement && originalScrollTop) {
+          treeOutlineContainerElement.scrollTop = originalScrollTop;
+        }
       }
     }
 
