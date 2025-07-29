@@ -78,8 +78,7 @@ export const postMessage = (id: string) => (type: string, message: any) => {
 
 export class PreactDevtoolsPanel extends UI.Panel.Panel {
   static id = 'preact_devtools';
-  // TODO: wait for the publish of preact devtools
-  static PREACT_DEVTOOLS_BUNDLE_URL = 'http://10.91.90.234:8080/dist/index.js'
+  static PREACT_DEVTOOLS_BUNDLE_URL = 'https://unpkg.com/@lynx-js/preact-devtools@latest/dist/index.js'
   
   onScreenCastPanelUINodeIdSelectedListeners: ((UINodeId: string) => void)[] = [];
   
@@ -108,7 +107,6 @@ export class PreactDevtoolsPanel extends UI.Panel.Panel {
       }
     });
     
-    debugger
     const div = document.createElement('div');
     const text = document.createTextNode('preact_devtools');
     div.appendChild(text);
@@ -124,7 +122,7 @@ export class PreactDevtoolsPanel extends UI.Panel.Panel {
     const PreactDevtoolsApp = preactDevtoolsBundle.default;
     window.ReactDOM.render(
       window.React.createElement(PreactDevtoolsApp, {
-        devtoolName: 'LDT',
+        isOSSLynxDevtool: true,
         addEventListener: addEventListener(PreactDevtoolsPanel.id),
         postMessage: postMessage(PreactDevtoolsPanel.id),
         addOnScreenCastPanelUINodeIdSelectedListener: (listener: (UINodeId: string) => void) => {

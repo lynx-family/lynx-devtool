@@ -8,13 +8,13 @@ import * as i18n from '../../core/i18n/i18n.js';
 
 const UIStrings = {
   /**
-  *@description Title of the PreactDevtools tool
+  *@description Title of the Preact Devtools tool
   */
-  preactDevtools: 'PreactDevtools',
+  preactDevtools: 'Preact Devtools',
   /**
-  *@description Title of an action that shows the PreactDevtools.
+  *@description Title of an action that shows the Preact Devtools.
   */
-  showPreactDevtools: 'Show PreactDevtools',
+  showPreactDevtools: 'Show Preact Devtools',
 };
 
 const str_ = i18n.i18n.registerUIStrings('panels/preact_devtools/preact_devtools-meta.ts', UIStrings);
