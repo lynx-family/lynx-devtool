@@ -1,3 +1,7 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
 import * as Root from '../../core/root/root.js';
 import * as UI from '../../ui/legacy/legacy.js';
 
@@ -36,7 +40,7 @@ UI.ViewManager.registerViewExtension({
   id: 'preact_devtools',
   title: i18nLazyString(UIStrings.preactDevtools),
   commandPrompt: i18nLazyString(UIStrings.showPreactDevtools),
-  order: 20,
+  order: 40,
   async loadView() {
     const PreactDevtoolsModule = await loadPreactDevtoolsModule();
     return PreactDevtoolsModule.PreactDevtoolsPanel.PreactDevtoolsPanel.instance();
