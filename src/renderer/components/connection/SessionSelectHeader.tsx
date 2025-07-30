@@ -18,6 +18,7 @@ const PageSession = () => {
     setSelectedSession,
     setStopAtEntry,
     setStopLepusAtEntry,
+    setFetchDebugInfo,
   } = useConnection();
   const [autoFocus, setAutoFocus] = useState(
     localStorage.getItem(LDT_CONST.KEY_AUTO_FOCUS_LAST_SESSION) !== "false"
@@ -77,7 +78,7 @@ const PageSession = () => {
       <Row>
         <Col span={12}>
           <div className={"device-info-item"}>
-            <span className={"left-panel-title"}>JS First Line Breakpoint</span>
+            <span className={"left-panel-title"}>BTS First Line BPs</span>
             <Switch
               className={"right-panel-input"}
               size="small"
@@ -88,12 +89,25 @@ const PageSession = () => {
         </Col>
         <Col span={12}>
           <div className={"device-info-item"}>
-            <span className={"left-panel-title"}>Main Thread Breakpoint</span>
+            <span className={"left-panel-title"}>MTS First Line BPs</span>
             <Switch
               className={"right-panel-input"}
               size="small"
               checked={deviceItem.stopLepusAtEntry}
               onChange={setStopLepusAtEntry}
+            />
+          </div>
+        </Col>
+        <Col span={12}>
+          <div className={"device-info-item"}>
+            <span className={"left-panel-title"}>MTS Debug</span>
+            <Switch
+              className={"right-panel-input"}
+              size="small"
+              checked={deviceItem.fetchMTSDebugInfo}
+              onChange={(checked) => {
+                setFetchDebugInfo('MTS', checked);
+              }}
             />
           </div>
         </Col>

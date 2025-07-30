@@ -130,6 +130,7 @@ const connectionStore = (store: any) => ({
         deviceInfoMap[device.id] = {
           stopLepusAtEntry: false,
           stopAtEntry: false,
+          fetchMTSDebugInfo: false,
           sessions: []
         };
       }
@@ -239,6 +240,7 @@ const connectionStore = (store: any) => ({
       deviceInfo = {
         stopLepusAtEntry: false,
         stopAtEntry: false,
+        fetchMTSDebugInfo: false,
         sessions
       };
       deviceInfoMap[sender] = deviceInfo;
@@ -446,6 +448,9 @@ const connectionStore = (store: any) => ({
     switchUtils.setStopAtEntry('MTS', value);
     const { setStopLepusAtEntryLegacy } = store();
     setStopLepusAtEntryLegacy(value);
+  },
+  setFetchDebugInfo(type: string, value: boolean) {
+    switchUtils.setFetchDebugInfo(type, value);
   },
   updateSessionScreenshot(sessionId: number, data: string) {
     const { deviceInfoMap, selectedDevice } = store() as ConnectionStoreType;

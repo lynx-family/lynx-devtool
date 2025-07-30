@@ -38,6 +38,7 @@ export interface IDevice {
 export interface IDeviceInfo {
   stopAtEntry: boolean;
   stopLepusAtEntry: boolean;
+  fetchMTSDebugInfo: boolean;
   sessions?: ISessionInfo[];
   selectedSession?: ISessionInfo;
   traceStarting?: boolean;

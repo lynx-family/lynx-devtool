@@ -17,7 +17,7 @@ import { useEffect, useMemo } from 'react';
 import './DeviceSelect.scss';
 import IconPlatform from './IconPlatform/IconPlatform';
 import useldtConnection from '@/renderer/ldt/store/ldtConnection';
-import { getStopAtEntry } from '@/renderer/utils/switchUtils';
+import { getStopAtEntry, getFetchDebugInfo } from '@/renderer/utils/switchUtils';
 
 export default function DeviceSelect() {
   const { deviceList, selectedDevice, setSelectedDevice } = useConnection();
@@ -27,6 +27,7 @@ export default function DeviceSelect() {
     setCurrentDevice(xdbDriver.getCurrentDevice());
     getStopAtEntry('DEFAULT');
     getStopAtEntry('MTS');
+    getFetchDebugInfo('MTS');
   }, [selectedDevice]);
 
   function combieDevices(groupKey: 'App' | 'deviceModel' = 'App'): IDevice[] {

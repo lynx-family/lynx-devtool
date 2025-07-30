@@ -6,7 +6,7 @@ import debugDriver from './debugDriver';
 import { getStore } from './flooks';
 import useConnection from '../hooks/connection';
 
-function updateStopAtEntry(type: string, value: boolean) {
+function updateDeviceInfo(info: string, type: string, value: boolean) {
   const currentClientId = debugDriver.getSelectClientId();
   if (currentClientId === undefined) {
     return;
@@ -17,11 +17,19 @@ function updateStopAtEntry(type: string, value: boolean) {
   if (deviceInfo === undefined) {
     return;
   }
-  if (type === 'MTS') {
-    deviceInfo.stopLepusAtEntry = value;
-  } else if (type === 'DEFAULT') {
-    deviceInfo.stopAtEntry = value;
+
+  if (info === 'stopAtEntry') {
+    if (type === 'MTS') {
+      deviceInfo.stopLepusAtEntry = value;
+    } else if (type === 'DEFAULT') {
+      deviceInfo.stopAtEntry = value;
+    }
+  } else if (info === 'fetchDebugInfo') {
+    if (type === 'MTS') {
+      deviceInfo.fetchMTSDebugInfo = value;
+    }
   }
+
   setDeviceInfoMap(newDeviceInfoMap);
 }
 
@@ -35,9 +43,25 @@ export async function getStopAtEntry(type: string) {
     if (value === undefined) {
       return;
     }
-    updateStopAtEntry(type, value);
+    updateDeviceInfo('stopAtEntry', type, value);
   } catch (error: any) {
     console.error('getStopAtEntry error:', type, error);
+  }
+}
+
+export async function getFetchDebugInfo(type: string) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({
+      type: 'GetFetchDebugInfo',
+      params: { type }
+    });
+    const { value } = result;
+    if (value === undefined) {
+      return;
+    }
+    updateDeviceInfo('fetchDebugInfo', type, value);
+  } catch (error: any) {
+    console.error('getFetchDebugInfo error:', type, error);
   }
 }
 
@@ -51,8 +75,25 @@ export async function setStopAtEntry(type: string, value: boolean) {
     if (resultValue === undefined) {
       return;
     }
-    updateStopAtEntry(type, resultValue);
+    updateDeviceInfo('stopAtEntry', type, resultValue);
+    getFetchDebugInfo(type);
   } catch (error: any) {
     console.error('setStopAtEntry error:', type, value, error);
+  }
+}
+
+export async function setFetchDebugInfo(type: string, value: boolean) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({
+      type: 'SetFetchDebugInfo',
+      params: { type, value }
+    });
+    const { value: resultValue } = result;
+    if (resultValue === undefined) {
+      return;
+    }
+    updateDeviceInfo('fetchDebugInfo', type, resultValue);
+  } catch (error: any) {
+    console.error('setFetchDebugInfo error:', value, error);
   }
 }
