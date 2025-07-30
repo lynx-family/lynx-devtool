@@ -88,7 +88,6 @@ export class PreactDevtoolsPanel extends UI.Panel.Panel {
   
   constructor() {
     super('preact_devtools');
-    console.log('PreactDevtoolsPanel constructor');
     
     window.addEventListener("message", (event) => {
       if (!event.data) {
@@ -112,7 +111,7 @@ export class PreactDevtoolsPanel extends UI.Panel.Panel {
     });
     
     const div = document.createElement('div');
-    const text = document.createTextNode('preact_devtools');
+    const text = document.createTextNode('Preact Devtools Panel is initializing...');
     div.appendChild(text);
     this.contentElement.appendChild(
       div
