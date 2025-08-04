@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/devtool-plugin-core",
-  "version": "0.0.6-dev.4",
+  "version": "0.1.0",
   "types": "./dist/types/index.d.ts",
   "jsnext:source": "./src/index.ts",
   "main": "./dist/lib/index.js",
