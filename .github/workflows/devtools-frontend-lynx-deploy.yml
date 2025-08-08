@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies (root)
         run: pnpm install
 
+      - name: ln Python
+        run: ln -s `which python3` /usr/local/bin/python
+
       - name: Build DevTools Frontend (lynx)
         run: pnpm run build:devtools-frontend-lynx
 
