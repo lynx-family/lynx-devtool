@@ -59,6 +59,7 @@ jobs:
             <body>
               <h1>Lynx Devtools</h1>
               <p><a href="/${{ github.event.repository.name }}/devtools-web-simulator/">Open DevTools Web Simulator</a></p>
+              <p><a href="/${{ github.event.repository.name }}/devtools-frontend-lynx/">Open DevTools Frontend (lynx)</a></p>
             </body>
           </html>
           EOF
