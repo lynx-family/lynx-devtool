@@ -1,0 +1,106 @@
+name: Deploy DevTools Frontend (lynx) to Pages and Release
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'packages/devtools-frontend-lynx/**'
+      - '.github/workflows/devtools-frontend-lynx-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: lynx-ubuntu-22.04-avd-large
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies (root)
+        run: pnpm install
+
+      - name: Build DevTools Frontend (lynx)
+        run: pnpm run build:devtools-frontend-lynx
+
+      - name: Locate artifacts
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          FRONT_DIR=$(ls -d packages/devtools-frontend-lynx/output/front_end_* | tail -n 1)
+          TAR_FILE=$(ls -1 packages/devtools-frontend-lynx/output/devtool.frontend.lynx_*.tar.gz | tail -n 1)
+          echo "FRONT_DIR=$FRONT_DIR" >> $GITHUB_ENV
+          echo "TAR_FILE=$TAR_FILE" >> $GITHUB_ENV
+          echo "Front dir: $FRONT_DIR"
+          echo "Tarball: $TAR_FILE"
+
+      - name: Prepare Pages content
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p pages-out/devtools-frontend-lynx
+          # copy all build outputs under timestamped directory
+          cp -r "$FRONT_DIR"/* pages-out/devtools-frontend-lynx/
+          # make devtools_app.html the landing page
+          cp "$FRONT_DIR/devtools_app.html" pages-out/devtools-frontend-lynx/index.html
+          # Minimal root index page with links
+          cat > pages-out/index.html <<'EOF'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Lynx Devtools</title>
+            </head>
+            <body>
+              <h1>Lynx Devtools</h1>
+              <p><a href="/${{ github.event.repository.name }}/devtools-frontend-lynx/">Open DevTools Frontend (lynx)</a></p>
+              <p><a href="/${{ github.event.repository.name }}/devtools-web-simulator/">Open DevTools Web Simulator</a></p>
+            </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Create GitHub Release and upload tarball
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: devtools-frontend-lynx-${{ github.run_number }}
+          name: DevTools Frontend (lynx) build #${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.TAR_FILE }}
+
+
