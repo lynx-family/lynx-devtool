@@ -4,4 +4,5 @@ packages:
   - 'packages/devtools-frontend-lynx'
   - 'packages/lynx-devtool-cli'
   - 'packages/lynx-devtool-utils'
+  - 'packages/devtools-web-simulator'
   - 'src'
