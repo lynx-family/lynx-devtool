@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: lynx-ubuntu-22.04-avd-large
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
