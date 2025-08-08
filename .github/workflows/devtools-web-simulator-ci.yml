@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'packages/devtools-web-simulator/**'
+      - '.github/workflows/devtools-web-simulator-ci.yml'
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
