@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Col, Divider, Flex, Form, Input, Layout, Row, Segmented, Space, Tag, Typography } from 'antd';
+import { Button, Card, Col, Divider, Flex, Form, Input, Layout, Modal, Popconfirm, Row, Segmented, Space, Switch, Table, Tag, Typography, Upload } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
+import { AutoResponseRule, DEFAULT_RULES, clone, generateRuleId, loadRules, saveRules } from './autoResponder';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Paragraph } = Typography;
@@ -29,6 +31,11 @@ export default function App() {
   const [devtoolsInput, setDevtoolsInput] = useState('');
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const messagePool = useRef<Record<string, QueueMsg[]>>({});
+  // auto responder
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
+  const [rules, setRules] = useState<AutoResponseRule[]>(loadRules());
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<AutoResponseRule | null>(null);
 
   const addLog = useCallback((log: Omit<MessageRecord, 'ts'>) => {
     setMessages((prev) => [{ ts: Date.now(), ...log }, ...prev].slice(0, 300));
@@ -80,6 +87,26 @@ export default function App() {
         case 'send_message':
           // forward to SDK simulator
           addLog({ from: 'DevTools', direction: '->', type: 'CDP', payload: content });
+          // auto responder
+          if (autoReplyEnabled && content && content.message) {
+            try {
+              const req = typeof content.message === 'string' ? JSON.parse(content.message) : content.message;
+              const method = req.method as string;
+              const reqId = req.id;
+              const rule = rules.find((r) => r.enabled && r.method === method);
+              if (rule) {
+                const resp = clone(rule.response || {});
+                if (reqId !== undefined) {
+                  resp.id = reqId;
+                }
+                // send back to iframe
+                postToIframe('lynx_message', { type: 'CDP', message: resp });
+                addLog({ from: 'SDK', direction: '->', type: 'AutoResponder', payload: resp });
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
           break;
         default:
           break;
@@ -141,6 +168,39 @@ export default function App() {
           <Input style={{ width: 120, backgroundColor: '#fff' }} addonBefore="session" value={sessionId} onChange={(e) => setSessionId(Number(e.target.value || 0))} />
           <Input style={{ width: 120, backgroundColor: '#fff' }} addonBefore="client" value={clientId} onChange={(e) => setClientId(Number(e.target.value || 0))} />
           <Button type="primary" onClick={() => iframeRef.current?.contentWindow ? lynxOpen() : null}>Reset</Button>
+          <Divider type="vertical" />
+          <Space>
+            <Text style={{ color: '#cbd5e1' }}>Auto Responder</Text>
+            <Switch checked={autoReplyEnabled} onChange={setAutoReplyEnabled} />
+            <Button size="small" onClick={() => setEditorOpen(true)}>Rules</Button>
+            <Upload
+              accept="application/json"
+              showUploadList={false}
+              beforeUpload={(file) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  try {
+                    const data = JSON.parse(String(reader.result));
+                    if (Array.isArray(data)) {
+                      setRules(data);
+                      saveRules(data);
+                    }
+                  } catch {}
+                };
+                reader.readAsText(file);
+                return false;
+              }}
+            >
+              <Button size="small" icon={<UploadOutlined />}>Import</Button>
+            </Upload>
+            <Button size="small" onClick={() => {
+              const blob = new Blob([JSON.stringify(rules, null, 2)], { type: 'application/json' });
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = 'auto-responder-rules.json';
+              a.click();
+            }}>Export</Button>
+          </Space>
         </Space>
       </Header>
       <Layout>
@@ -212,6 +272,98 @@ export default function App() {
           </div>
         </Content>
       </Layout>
+      <Modal
+        title="Auto Responder Rules"
+        open={editorOpen}
+        onCancel={() => setEditorOpen(false)}
+        footer={null}
+        width={880}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Table
+            size="small"
+            rowKey="id"
+            pagination={false}
+            dataSource={rules}
+            columns={[
+              {
+                title: 'Enabled',
+                dataIndex: 'enabled',
+                width: 90,
+                render: (v, record) => (
+                  <Switch
+                    checked={record.enabled}
+                    onChange={(val) => {
+                      const next = rules.map((r) => (r.id === record.id ? { ...r, enabled: val } : r));
+                      setRules(next);
+                      saveRules(next);
+                    }}
+                  />
+                )
+              },
+              { title: 'Method', dataIndex: 'method', width: 220 },
+              {
+                title: 'Response',
+                render: (_, record) => (
+                  <Input.TextArea
+                    className="code"
+                    autoSize={{ minRows: 2, maxRows: 6 }}
+                    value={JSON.stringify(record.response, null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const val = JSON.parse(e.target.value || '{}');
+                        const next = rules.map((r) => (r.id === record.id ? { ...r, response: val } : r));
+                        setRules(next);
+                      } catch {}
+                    }}
+                    onBlur={() => saveRules(rules)}
+                  />
+                )
+              },
+              {
+                title: 'Actions',
+                width: 160,
+                render: (_, record) => (
+                  <Space>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setEditingRule({ ...record });
+                      }}
+                    >Edit</Button>
+                    <Popconfirm
+                      title="Delete this rule?"
+                      onConfirm={() => {
+                        const next = rules.filter((r) => r.id !== record.id);
+                        setRules(next);
+                        saveRules(next);
+                      }}
+                    >
+                      <Button danger size="small">Delete</Button>
+                    </Popconfirm>
+                  </Space>
+                )
+              }
+            ]}
+          />
+          <Space>
+            <Button
+              onClick={() => {
+                const newRule: AutoResponseRule = {
+                  id: generateRuleId(),
+                  method: 'Domain.method',
+                  enabled: true,
+                  response: { result: {} }
+                };
+                const next = [newRule, ...rules];
+                setRules(next);
+                saveRules(next);
+              }}
+            >Add Rule</Button>
+            <Button onClick={() => { const def = clone(DEFAULT_RULES); setRules(def); saveRules(def); }}>Reset to Default</Button>
+          </Space>
+        </Space>
+      </Modal>
     </Layout>
   );
 }
