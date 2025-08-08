@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies (package scope)
         working-directory: packages/devtools-web-simulator
         run: |
-          npm ci
+          npm install
 
       - name: Type-check
         working-directory: packages/devtools-web-simulator

@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies (package scope)
         working-directory: packages/devtools-web-simulator
-        run: npm ci
+        run: npm install
 
       - name: Build (Vite)
         working-directory: packages/devtools-web-simulator
