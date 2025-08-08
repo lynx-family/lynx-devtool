@@ -30,8 +30,8 @@ jobs:
         working-directory: packages/devtools-web-simulator
         run: npx tsc -b
 
-      - name: Build (Vite)
+      - name: Build (Rsbuild)
         working-directory: packages/devtools-web-simulator
-        run: npx vite build
+        run: npm run build
 
 

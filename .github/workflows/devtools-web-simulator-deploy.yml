@@ -36,14 +36,12 @@ jobs:
         working-directory: packages/devtools-web-simulator
         run: npm install
 
-      - name: Build (Vite)
+      - name: Build (Rsbuild)
         working-directory: packages/devtools-web-simulator
         env:
-          # Make sure assets resolve under /devtools-web-simulator/
-          VITE_BASE: /devtools-web-simulator/
-        run: |
-          # Adjust base path at build time if vite config reads env
-          npx vite build --base=/devtools-web-simulator/
+          # Ensure assets resolve under /<repo>/devtools-web-simulator/
+          ASSET_PREFIX: /${{ github.event.repository.name }}/devtools-web-simulator/
+        run: npm run build
 
       - name: Prepare Pages content
         run: |
@@ -60,7 +58,7 @@ jobs:
             </head>
             <body>
               <h1>Lynx Devtools</h1>
-              <p><a href="/devtools-web-simulator/">Open DevTools Web Simulator</a></p>
+              <p><a href="/${{ github.event.repository.name }}/devtools-web-simulator/">Open DevTools Web Simulator</a></p>
             </body>
           </html>
           EOF
