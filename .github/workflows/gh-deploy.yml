@@ -1,11 +1,12 @@
-name: Deploy DevTools Frontend (lynx) to Pages and Release
+name: Deploy GitHub Pages (Frontend + Simulator)
 
 on:
   push:
     branches: ["main"]
     paths:
       - 'packages/devtools-frontend-lynx/**'
-      - '.github/workflows/devtools-frontend-lynx-deploy.yml'
+      - 'packages/devtools-web-simulator/**'
+      - '.github/workflows/gh-deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -38,14 +39,22 @@ jobs:
       - name: Install dependencies (root)
         run: pnpm install
 
-      - name: ln Python
-        run: ln -s `which python3` /usr/local/bin/python
+      - name: Ensure python (user bin)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          PY3=$(which python3)
+          ln -sf "$PY3" "$HOME/.local/bin/python"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          python --version
 
+      # Build DevTools Frontend (lynx)
       - name: Build DevTools Frontend (lynx)
         run: pnpm run build:devtools-frontend-lynx
 
-      - name: Locate artifacts
-        id: locate
+      - name: Locate DevTools Frontend artifacts
+        id: locate_frontend
         shell: bash
         run: |
           set -euo pipefail
@@ -56,16 +65,29 @@ jobs:
           echo "Front dir: $FRONT_DIR"
           echo "Tarball: $TAR_FILE"
 
+      # Build DevTools Web Simulator (rsbuild)
+      - name: Install deps (simulator)
+        working-directory: packages/devtools-web-simulator
+        run: npm install
+
+      - name: Build Simulator
+        working-directory: packages/devtools-web-simulator
+        env:
+          ASSET_PREFIX: /${{ github.event.repository.name }}/devtools-web-simulator/
+        run: npm run build
+
       - name: Prepare Pages content
         shell: bash
         run: |
           set -euo pipefail
+          # simulator
+          mkdir -p pages-out/devtools-web-simulator
+          cp -r packages/devtools-web-simulator/dist/* pages-out/devtools-web-simulator/
+          # frontend
           mkdir -p pages-out/devtools-frontend-lynx
-          # copy all build outputs under timestamped directory
           cp -r "$FRONT_DIR"/* pages-out/devtools-frontend-lynx/
-          # make devtools_app.html the landing page
           cp "$FRONT_DIR/devtools_app.html" pages-out/devtools-frontend-lynx/index.html
-          # Minimal root index page with links
+          # root index
           cat > pages-out/index.html <<'EOF'
           <!doctype html>
           <html>
