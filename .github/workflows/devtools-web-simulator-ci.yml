@@ -1,0 +1,36 @@
+name: DevTools Web Simulator CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/devtools-web-simulator/**'
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build @lynx-js/devtools-web-simulator
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (package scope)
+        working-directory: packages/devtools-web-simulator
+        run: |
+          npm ci
+
+      - name: Type-check
+        working-directory: packages/devtools-web-simulator
+        run: npx tsc -b
+
+      - name: Build (Vite)
+        working-directory: packages/devtools-web-simulator
+        run: npx vite build
+
+

@@ -1,0 +1,80 @@
+name: Deploy DevTools Web Simulator to Pages
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'packages/devtools-web-simulator/**'
+      - '.github/workflows/devtools-web-simulator-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (package scope)
+        working-directory: packages/devtools-web-simulator
+        run: npm ci
+
+      - name: Build (Vite)
+        working-directory: packages/devtools-web-simulator
+        env:
+          # Make sure assets resolve under /devtools-web-simulator/
+          VITE_BASE: /devtools-web-simulator/
+        run: |
+          # Adjust base path at build time if vite config reads env
+          npx vite build --base=/devtools-web-simulator/
+
+      - name: Prepare Pages content
+        run: |
+          mkdir -p pages-out/devtools-web-simulator
+          cp -r packages/devtools-web-simulator/dist/* pages-out/devtools-web-simulator/
+          # Minimal root index page
+          cat > pages-out/index.html <<'EOF'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Lynx Devtools</title>
+            </head>
+            <body>
+              <h1>Lynx Devtools</h1>
+              <p><a href="/devtools-web-simulator/">Open DevTools Web Simulator</a></p>
+            </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+
