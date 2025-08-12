@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [lynx-ubuntu-22.04-avd-large]
+        os: [lynx-ubuntu-22.04-medium]
         node-version: [18.20.2]
         pnpm-version: [7.33.6]
     

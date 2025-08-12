@@ -10,7 +10,7 @@ permissions:
   
 jobs:
   create-release:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-medium
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_type: ${{ steps.release_type.outputs.RELEASE_TYPE }}
