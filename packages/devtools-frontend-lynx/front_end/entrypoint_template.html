@@ -35,6 +35,42 @@
     type="module"
     src="./entrypoints/%ENTRYPOINT_NAME%/%ENTRYPOINT_NAME%.js"
   ></script>
+  <script>
+    // 单面板模式控制器加载器
+    // 仅在URL包含panel参数时加载单面板控制脚本
+    (function() {
+      'use strict';
+      
+      // 获取URL参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const panelParam = urlParams.get('panel');
+      
+      // 如果没有指定panel参数，使用默认全面板模式
+      if (!panelParam) {
+        console.log('[Single Panel Loader] 未指定panel参数，使用默认全面板模式');
+        return;
+      }
+      
+      console.log(`[Single Panel Loader] 检测到panel参数: ${panelParam}，正在加载单面板控制器...`);
+      
+      // 动态加载单面板控制器脚本
+      const script = document.createElement('script');
+      script.src = './single-panel-controller.js';
+      script.async = true;
+      
+      script.onload = function() {
+        console.log('[Single Panel Loader] 单面板控制器加载成功');
+      };
+      
+      script.onerror = function() {
+        console.error('[Single Panel Loader] 单面板控制器加载失败');
+      };
+      
+      // 将脚本添加到文档头部
+      document.head.appendChild(script);
+      
+    })();
+  </script>
   <body
     class="undocked"
     id="-blink-dev-tools"
