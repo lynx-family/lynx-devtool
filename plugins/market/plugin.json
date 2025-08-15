@@ -1,0 +1,10 @@
+{
+  "id": "market",
+  "name": "Plugin Market",
+  "description": "Through the plugin market, you can use plugins isomorphic with LDT internal structure to complete business customization functions and share them with other developers",
+  "isInternal": true,
+  "mode": "side-sheet",
+  "position": "right",
+  "priority": 10000,
+  "hasView": true
+}
