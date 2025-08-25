@@ -40,7 +40,6 @@ class MobilePage extends BasePage<BrowserWindow> {
         webviewTag: true,
         contextIsolation: false,
         nodeIntegrationInWorker: false,
-        allowRunningInsecureContent: true,
         preload: path.join(__dirname, 'preload.js'),
         partition: 'persist:ldt-mobile'
       }
