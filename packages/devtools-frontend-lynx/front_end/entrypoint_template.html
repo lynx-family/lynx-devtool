@@ -35,8 +35,10 @@
     type="module"
     src="./entrypoints/%ENTRYPOINT_NAME%/%ENTRYPOINT_NAME%.js"
   ></script>
+  <script type="module" src="./plugin/plugin.js"></script>
   <body
     class="undocked"
     id="-blink-dev-tools"
+    onload="window.registerPlugins();"
   ></body>
 </html>
