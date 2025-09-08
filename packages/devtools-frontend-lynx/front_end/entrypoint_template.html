@@ -35,6 +35,42 @@
     type="module"
     src="./entrypoints/%ENTRYPOINT_NAME%/%ENTRYPOINT_NAME%.js"
   ></script>
+  <script>
+    // Loader for single panel
+    // Only load single panel controller when URL contains panel parameter
+    (function() {
+      'use strict';
+      
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const panelParam = urlParams.get('panel');
+      
+      // If no panel parameter is specified, use default full panel mode
+      if (!panelParam) {
+        console.log('[Single Panel Loader] No panel parameter specified, using default full panel mode');
+        return;
+      }
+      
+      console.log(`[Single Panel Loader] Detected panel parameter: ${panelParam}, loading single panel controller...`);
+      
+      // Dynamically load single panel controller script
+      const script = document.createElement('script');
+      script.src = './single-panel-controller.js';
+      script.async = true;
+      
+      script.onload = function() {
+        console.log('[Single Panel Loader] Single panel controller loaded successfully');
+      };
+      
+      script.onerror = function() {
+        console.error('[Single Panel Loader] Single panel controller loaded failed');
+      };
+      
+      // Add script to document head
+      document.head.appendChild(script);
+      
+    })();
+  </script>
   <body
     class="undocked"
     id="-blink-dev-tools"
