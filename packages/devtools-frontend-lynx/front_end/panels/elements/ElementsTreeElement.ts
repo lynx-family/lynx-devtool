@@ -77,6 +77,10 @@ const UIStrings = {
   */
   editAttribute: 'Edit attribute',
   /**
+  *@description A context menu item to show element ID
+  */
+  showElementId: 'Show element ID',
+  /**
   *@description Text to focus on something
   */
   focus: 'Focus',
@@ -621,6 +625,8 @@ export class ElementsTreeElement extends UI.TreeOutline.TreeElement {
     if (!treeElement) {
       return;
     }
+
+    contextMenu.editSection().appendItem(i18nString(UIStrings.showElementId), this._showElementId.bind(this));
     contextMenu.editSection().appendItem(
         i18nString(UIStrings.addAttribute), treeElement._addNewAttribute.bind(treeElement));
 
@@ -771,6 +777,30 @@ export class ElementsTreeElement extends UI.TreeOutline.TreeElement {
     this._insertInLastAttributePosition(tag, attr);
     attr.scrollIntoViewIfNeeded(true);
     return this._startEditingAttribute(attr, attr);
+  }
+
+  _showElementId(): void {
+    const node = this._node;
+    if (node && node.nodeType() === Node.ELEMENT_NODE) {
+      const nodeId = node.id.toString();
+      
+      // Create attribute DOM element
+      const container = document.createElement('span');
+      const attr = this._buildAttributeDOM(container, 'element-id', nodeId, null, true, node);
+      attr.style.marginLeft = '2px';   // overrides the .editing margin rule
+      attr.style.marginRight = '2px';  // overrides the .editing margin rule
+
+      // Find the tag element and insert at the correct attribute position
+      const tag = this.listItemElement.getElementsByClassName('webkit-html-tag')[0];
+      if (tag) {
+        this._insertInLastAttributePosition(tag, attr);
+        
+        // Add highlight animation effect
+        UI.UIUtils.runCSSAnimationOnce(attr, 'dom-update-highlight');
+        
+        console.log(`Successfully added element-id="${nodeId}" to DOM tree display`);
+      }
+    }
   }
 
   _triggerEditAttribute(attributeName: string): boolean|undefined {
