@@ -46,12 +46,11 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ steps.release_type.outputs.RELEASE_TYPE }} ${{ github.ref_name }}
+          name: ${{ steps.release_type.outputs.RELEASE_TYPE }} ${{ github.ref_name }}
           draft: false
           prerelease: ${{ steps.release_type.outputs.IS_PRERELEASE }}
           body: |
@@ -132,7 +131,8 @@ jobs:
         run: pnpm run build:all
 
       # Only upload frontend once (in arm64 job)
-      - name: Find and Upload Frontend
+      - name: Find Frontend Archive
+        id: find_frontend
         if: matrix.arch == 'arm64'
         run: |
           ARCHIVE_PATH=$(find ./packages/devtools-frontend-lynx/output -name "devtool.frontend.lynx_1.0.*.tar.gz" | head -n 1)
@@ -141,13 +141,22 @@ jobs:
             exit 1
           fi
           echo "Found archive at: ${ARCHIVE_PATH}"
-          
-          curl \
-            -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/gzip" \
-            --data-binary @"${ARCHIVE_PATH}" \
-            "${{ needs.create-release.outputs.upload_url }}?name=devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
+          echo "archive_path=${ARCHIVE_PATH}" >> $GITHUB_OUTPUT
+
+      - name: Prepare Frontend Asset
+        id: prepare_frontend_asset
+        if: matrix.arch == 'arm64'
+        run: |
+          mkdir -p frontend-upload
+          cp "${{ steps.find_frontend.outputs.archive_path }}" "frontend-upload/devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
+          echo "upload_path=frontend-upload/devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Upload Frontend (GH Release)
+        if: matrix.arch == 'arm64'
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: frontend-upload/devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz
 
       - name: Install Apple Certificate
         if: matrix.arch == 'arm64' || matrix.arch == 'x64'
@@ -192,15 +201,11 @@ jobs:
           echo "dmg_path=${DMG_PATH}" >> $GITHUB_OUTPUT
           echo "dmg_filename=${DMG_FILENAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload ${{ matrix.arch }} DMG
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload ${{ matrix.arch }} DMG (GH Release)
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
-          asset_name: ${{ steps.find_dmg.outputs.dmg_filename }}
-          asset_content_type: application/x-apple-diskimage
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ steps.find_dmg.outputs.dmg_path }}
 
   build-and-upload-windows:
     permissions: write-all
@@ -292,7 +297,8 @@ jobs:
         run: pnpm run build:all
 
       # Upload frontend (only once)
-      - name: Find and Upload Frontend
+      - name: Find Frontend Archive
+        id: find_frontend_win
         shell: pwsh
         run: |
           $archivePath = Get-ChildItem -Path ".\packages\devtools-frontend-lynx\output" -Filter "devtool.frontend.lynx_1.0.*.tar.gz" | Select-Object -First 1 -ExpandProperty FullName
@@ -301,13 +307,24 @@ jobs:
             exit 1
           }
           Write-Host "Found archive at: $archivePath"
-          
-          curl.exe `
-            -X POST `
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" `
-            -H "Content-Type: application/gzip" `
-            --data-binary "@$archivePath" `
-            "${{ needs.create-release.outputs.upload_url }}?name=devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
+          echo "archive_path=$archivePath" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare Frontend Asset
+        id: prepare_frontend_win
+        shell: pwsh
+        run: |
+          $destDir = "frontend-upload"
+          if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
+          $destPath = Join-Path $destDir "devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
+          Copy-Item "${{ steps.find_frontend_win.outputs.archive_path }}" $destPath -Force
+          $uploadPath = (Resolve-Path $destPath).Path -replace '\\','/'
+          echo "upload_path=$uploadPath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Frontend (GH Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ steps.prepare_frontend_win.outputs.upload_path }}
 
       # Build Windows green package (ZIP - no installer)
       - name: Build Windows version
@@ -335,12 +352,15 @@ jobs:
             exit 1
           }
 
-      - name: Upload Windows ZIP Package  
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Normalize ZIP path
+        id: normalize_zip
+        shell: pwsh
+        run: |
+          $p = "${{ steps.find_zip.outputs.zip_path }}" -replace '\\','/'
+          echo "upload_path=$p" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows ZIP (GH Release)  
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_zip.outputs.zip_path }}
-          asset_name: ${{ steps.find_zip.outputs.zip_filename }}
-          asset_content_type: application/zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ steps.normalize_zip.outputs.upload_path }}
