@@ -72,6 +72,8 @@ jobs:
     strategy:
       matrix:
         arch: [arm64, x64]
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: true
     
     steps:
       - uses: actions/checkout@v3
@@ -202,6 +204,8 @@ jobs:
   build-and-upload-windows:
     needs: create-release
     runs-on: lynx-windows-2022-large
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: true
     
     steps:
       - uses: actions/checkout@v3
@@ -223,6 +227,11 @@ jobs:
         shell: pwsh
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $env:GITHUB_ENV
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
