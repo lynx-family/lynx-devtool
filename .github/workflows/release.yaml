@@ -69,6 +69,7 @@ jobs:
   build-and-upload-macos:
     needs: create-release
     runs-on: lynx-darwin-14-medium
+    permissions: write-all
     strategy:
       matrix:
         arch: [arm64, x64]
@@ -202,6 +203,7 @@ jobs:
           asset_content_type: application/x-apple-diskimage
 
   build-and-upload-windows:
+    permissions: write-all
     needs: create-release
     runs-on: lynx-windows-2022-large
     env:
