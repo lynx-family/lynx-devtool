@@ -248,19 +248,32 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Symlink python to python3 (mac)
+      - name: Symlink python to vpython (mac)
         shell: bash
         run: |
           set -euo pipefail
-          which python3 || {
-            echo "python3 not found in PATH"; exit 1;
-          }
-          sudo ln -sf "$(which python3)" /usr/local/bin/python
+          DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
+          VPYTHON="$DEPOT_DIR/vpython"
+          if [[ ! -x "$VPYTHON" ]]; then
+            echo "Error: vpython not found at $VPYTHON"
+            echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
+            ls -la "$DEPOT_DIR" || true
+            exit 1
+          fi
+          if [[ ! -x "$VPYTHON" ]]; then
+            echo "Error: vpython still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
+          fi
+          sudo ln -sf "$VPYTHON" /usr/local/bin/python
+          python --version
 
-      - name: Sync devtools-gn
+      - name: Sync devtools-gn (nohooks)
+        shell: bash
         run: |
+          set -euo pipefail
           export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH
-          pnpm run sync:devtools-gn
+          pushd packages/devtools-frontend-lynx >/dev/null
+          gclient sync --gclientfile=.gclient --deps=all --nohooks
+          popd >/dev/null
 
       - name: Build devtools-gn
         run: pnpm run build:devtools
@@ -435,18 +448,36 @@ jobs:
       - name: Fetch depot_tools
         run: pnpm run fetch:depot_tools
 
-      - name: Add depot_tools & Python to PATH
-        shell: pwsh
-        run: |
-          $depot = "$(Get-Location)\packages\devtools-frontend-lynx\buildtools\depot_tools"
-          "$depot" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          $env:pythonLocation | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          python --version
-          where.exe python
+      - name: Add depot_tools to PATH (mac)
+        shell: bash
+        run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Sync devtools-gn
-        shell: pwsh
-        run: pnpm run sync:devtools-gn
+      - name: Symlink python to vpython (mac)
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
+          VPYTHON="$DEPOT_DIR/vpython"
+          if [[ ! -x "$VPYTHON" ]]; then
+            echo "Error: vpython not found at $VPYTHON"
+            echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
+            ls -la "$DEPOT_DIR" || true
+            exit 1
+          fi
+          if [[ ! -x "$VPYTHON" ]]; then
+            echo "Error: vpython still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
+          fi
+          sudo ln -sf "$VPYTHON" /usr/local/bin/python
+          python --version
+
+      - name: Sync devtools-gn (nohooks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH
+          pushd packages/devtools-frontend-lynx >/dev/null
+          gclient sync --gclientfile=.gclient --deps=all --nohooks
+          popd >/dev/null
 
       - name: Build devtools-gn
         run: pnpm run build:devtools
