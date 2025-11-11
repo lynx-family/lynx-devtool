@@ -40,6 +40,10 @@ jobs:
             git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "packages/devtools-frontend-lynx/buildtools/depot_tools" --depth=1
           fi
 
+      - name: Add depot_tools to PATH (Linux)
+        shell: bash
+        run: echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
+
       # Restore caches for third-party resources (Node/mac, clang-format/mac, Chromium/mac)
       - name: Restore Node (mac) cache
         id: cache-node-mac-linux
@@ -74,7 +78,7 @@ jobs:
         working-directory: packages/devtools-frontend-lynx
         run: |
           set -euo pipefail
-          python3 third_party/depot_tools/download_from_google_storage.py \
+          python3 buildtools/depot_tools/download_from_google_storage.py \
             --no_resume --extract --no_auth \
             --bucket chromium-nodejs/14.15.4 \
             -s third_party/node/mac/node-darwin-x64.tar.gz.sha1
@@ -84,7 +88,7 @@ jobs:
         working-directory: packages/devtools-frontend-lynx
         run: |
           set -euo pipefail
-          python3 third_party/depot_tools/download_from_google_storage.py \
+          python3 buildtools/depot_tools/download_from_google_storage.py \
             --no_resume --no_auth \
             --bucket chromium-clang-format \
             -s buildtools/mac/clang-format.sha1
