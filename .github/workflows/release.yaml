@@ -258,7 +258,7 @@ jobs:
         with:
           repository: KananSu/lynx-trace
           latest: true
-          fileName: "perfetto-ui-release-*.tar.gz"
+          fileName: "perfetto-ui-*.tar.gz"
           out-file-path: temp-lynx-trace
           token: ${{ secrets.GITHUB_TOKEN }}
 
