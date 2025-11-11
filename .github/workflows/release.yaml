@@ -44,6 +44,13 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
+      - name: Sync DEPS to materialize buildtools (no hooks)
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          gclient sync --gclientfile=.gclient --deps=all --nohooks
+
       # Restore caches for third-party resources (Node/mac, clang-format/mac, Chromium/mac)
       - name: Restore Node (mac) cache
         id: cache-node-mac-linux
@@ -79,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 buildtools/depot_tools/download_from_google_storage.py \
-            --no_resume --extract --no_auth \
+            --no_resume --extract \
             --bucket chromium-nodejs/14.15.4 \
             -s third_party/node/mac/node-darwin-x64.tar.gz.sha1
 
@@ -89,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 buildtools/depot_tools/download_from_google_storage.py \
-            --no_resume --no_auth \
+            --no_resume \
             --bucket chromium-clang-format \
             -s buildtools/mac/clang-format.sha1
 
@@ -98,7 +105,7 @@ jobs:
         working-directory: packages/devtools-frontend-lynx
         run: |
           set -euo pipefail
-          python3 scripts/deps/download_chromium.py \
+          vpython scripts/deps/download_chromium.py \
             https://commondatastorage.googleapis.com/chromium-browser-snapshots/Mac/902866/chrome-mac.zip \
             third_party/chrome \
             chrome-mac/Chromium.app/Contents \
@@ -205,8 +212,7 @@ jobs:
           restore-keys: |
             chrome-mac-
 
-      - name: ln Python
-        run: ln -s `which python3` /usr/local/bin/python
+      
 
       # Node and pnpm setup steps
       - name: Setup Node.js
@@ -237,6 +243,19 @@ jobs:
 
       - name: Fetch depot_tools
         run: pnpm run fetch:depot_tools
+
+      - name: Add depot_tools to PATH (mac)
+        shell: bash
+        run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
+
+      - name: Symlink python to vpython (mac)
+        shell: bash
+        run: |
+          set -euo pipefail
+          which vpython || {
+            echo "vpython not found in PATH"; exit 1;
+          }
+          sudo ln -sf "$(which vpython)" /usr/local/bin/python
 
       - name: Sync devtools-gn
         run: |
