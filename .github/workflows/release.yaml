@@ -105,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 buildtools/depot_tools/download_from_google_storage.py \
-            --no_resume --extract \
+            --no_resume \
             --bucket chromium-nodejs/14.15.4 \
             -s third_party/node/win/node.exe.sha1
 
