@@ -534,15 +534,45 @@ jobs:
             python3 buildtools\depot_tools\download_from_google_storage.py --no_resume --extract --bucket chromium-nodejs/14.15.4 -s third_party\node\mac\node-darwin-x64.tar.gz.sha1
           }
 
+      - name: Setup Git for Windows
+        shell: pwsh
+        run: |
+          # Ensure Git is in PATH for subsequent steps
+          $gitPaths = @(
+            "C:\Program Files\Git\bin",
+            "C:\Program Files (x86)\Git\bin",
+            "${env:ProgramFiles}\Git\bin",
+            "${env:ProgramFiles(x86)}\Git\bin"
+          )
+          foreach ($gitPath in $gitPaths) {
+            if (Test-Path "$gitPath\git.exe") {
+              Write-Host "Found Git at: $gitPath"
+              Add-Content -Path $env:GITHUB_PATH -Value $gitPath
+              break
+            }
+          }
+
       - name: Sync devtools-gn (nohooks)
         shell: pwsh
         run: |
+          # Verify git is available
+          try {
+            git --version
+            Write-Host "Git is available"
+          } catch {
+            Write-Error "Git not found in PATH, cannot proceed"
+            exit 1
+          }
+
           $depot = Join-Path $pwd "packages\devtools-frontend-lynx\buildtools\depot_tools"
           $env:PATH = "$depot;$env:PATH"
           $env:DEPOT_TOOLS_UPDATE = "0"
-          $env:GIT_CACHE_PATH = "$env:TEMP\git_cache"
+          $env:DEPOT_TOOLS_METRICS = "0"
+          # Disable git cache to avoid git path issues
+          $env:DISABLE_DEPOT_TOOLS_CACHE = "1"
+          $env:GIT_CACHE_PATH = ""
           Push-Location "packages\devtools-frontend-lynx"
-          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history
+          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history --shallow
           Pop-Location
 
       - name: Build devtools-gn
