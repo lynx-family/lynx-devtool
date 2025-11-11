@@ -530,15 +530,43 @@ jobs:
           $env:PATH = "$depot;$env:PATH"
           $env:DEPOT_TOOLS_UPDATE = "0"
           $env:DEPOT_TOOLS_METRICS = "0"
-          # Disable git cache to avoid git path issues
+          # Comprehensive git cache disabling
           $env:DISABLE_DEPOT_TOOLS_CACHE = "1"
           $env:GIT_CACHE_PATH = ""
+          $env:GCLIENT_CACHE_DIR = ""
+          $env:GIT_CACHE_POLICY = "none"
+          # Disable git version warning
+          $env:GCLIENT_SUPPRESS_GIT_VERSION_WARNING = "1"
+          # Set cache policy to bypass cache
+          $env:GCLIENT_CACHE_DISABLE = "1"
+
           Push-Location "packages\devtools-frontend-lynx"
-          # First sync without hooks to get DEPS
-          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history --shallow
-          # Then run hooks to download dependencies like Node.js and clang-format
-          gclient runhooks
+          # Use --cache-dir to specify a local cache directory and --no-history
+          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history --shallow --cache-dir="$env:TEMP\gclient_cache"
           Pop-Location
+
+      - name: Download Windows dependencies manually
+        shell: pwsh
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          # Use the correct depot_tools path for download scripts
+          $depotToolsPath = "buildtools\depot_tools"
+
+          # Download Node.js for Windows if not already cached
+          if (-not (Test-Path "third_party\node\win\node.exe")) {
+            Write-Host "Downloading Node.js for Windows..."
+            if (Test-Path "third_party\node\win\node.exe.sha1") {
+              python3 "$depotToolsPath\download_from_google_storage.py" --no_resume --no_auth --bucket chromium-nodejs/14.15.4 -s "third_party\node\win\node.exe.sha1"
+            }
+          }
+
+          # Download Node.js for Mac (needed for cross-platform builds)
+          if (-not (Test-Path "third_party\node\mac\node-darwin-x64\bin\node")) {
+            Write-Host "Downloading Node.js for Mac..."
+            if (Test-Path "third_party\node\mac\node-darwin-x64.tar.gz.sha1") {
+              python3 "$depotToolsPath\download_from_google_storage.py" --no_resume --extract --no_auth --bucket chromium-nodejs/14.15.4 -s "third_party\node\mac\node-darwin-x64.tar.gz.sha1"
+            }
+          }
 
       - name: Build devtools-gn
         run: pnpm run build:devtools
