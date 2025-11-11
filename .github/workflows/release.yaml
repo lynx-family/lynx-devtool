@@ -39,6 +39,66 @@ jobs:
           else
             git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "packages/devtools-frontend-lynx/buildtools/depot_tools" --depth=1
           fi
+
+      # Restore caches for third-party resources (Node/mac, clang-format/mac, Chromium/mac)
+      - name: Restore Node (mac) cache
+        id: cache-node-mac-linux
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/node/mac
+          key: node-mac-14.15.4-v1
+          restore-keys: |
+            node-mac-
+
+      - name: Restore clang-format (mac) cache
+        id: cache-clang-mac-linux
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/mac
+          key: clang-format-mac-v1
+          restore-keys: |
+            clang-format-
+
+      - name: Restore Chromium (mac 902866) cache
+        id: cache-chrome-mac-linux
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/chrome
+          key: chrome-mac-902866-v1
+          restore-keys: |
+            chrome-mac-
+
+      # Prefetch third-party resources on Linux container to populate caches
+      - name: Prefetch Node (mac x64)
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          python3 third_party/depot_tools/download_from_google_storage.py \
+            --no_resume --extract --no_auth \
+            --bucket chromium-nodejs/14.15.4 \
+            -s third_party/node/mac/node-darwin-x64.tar.gz.sha1
+
+      - name: Prefetch clang-format (mac)
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          python3 third_party/depot_tools/download_from_google_storage.py \
+            --no_resume --no_auth \
+            --bucket chromium-clang-format \
+            -s buildtools/mac/clang-format.sha1
+
+      - name: Prefetch Chromium (mac 902866)
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          python3 scripts/deps/download_chromium.py \
+            https://commondatastorage.googleapis.com/chromium-browser-snapshots/Mac/902866/chrome-mac.zip \
+            third_party/chrome \
+            chrome-mac/Chromium.app/Contents \
+            902866
       
       - name: Set release type
         id: release_type
@@ -112,6 +172,34 @@ jobs:
           key: depot_tools-v1
           restore-keys: |
             depot_tools-
+
+      # Restore cached third-party resources to avoid network downloads in hooks
+      - name: Restore Node (mac) cache
+        id: cache-node-mac
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/node/mac
+          key: node-mac-14.15.4-v1
+          restore-keys: |
+            node-mac-
+
+      - name: Restore clang-format (mac) cache
+        id: cache-clang-mac
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/mac
+          key: clang-format-mac-v1
+          restore-keys: |
+            clang-format-
+
+      - name: Restore Chromium (mac 902866) cache
+        id: cache-chrome-mac
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/chrome
+          key: chrome-mac-902866-v1
+          restore-keys: |
+            chrome-mac-
 
       - name: ln Python
         run: ln -s `which python3` /usr/local/bin/python
