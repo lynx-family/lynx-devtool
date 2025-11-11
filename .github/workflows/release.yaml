@@ -248,24 +248,6 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Symlink python to vpython3 (mac)
-        shell: bash
-        run: |
-          set -euo pipefail
-          DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
-          VPYTHON="$DEPOT_DIR/vpython3"
-          if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython3 not found at $VPYTHON"
-            echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
-            ls -la "$DEPOT_DIR" || true
-            exit 1
-          fi
-          if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython3 still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
-          fi
-          sudo ln -sf "$VPYTHON" /usr/local/bin/python
-          python --version
-
       - name: Sync devtools-gn (nohooks)
         shell: bash
         run: |
@@ -448,36 +430,19 @@ jobs:
       - name: Fetch depot_tools
         run: pnpm run fetch:depot_tools
 
-      - name: Add depot_tools to PATH (mac)
-        shell: bash
-        run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
-
-      - name: Symlink python to vpython3 (mac)
-        shell: bash
+      - name: Add depot_tools to PATH (Windows)
+        shell: pwsh
         run: |
-          set -euo pipefail
-          DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
-          VPYTHON="$DEPOT_DIR/vpython3"
-          if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython3 not found at $VPYTHON"
-            echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
-            ls -la "$DEPOT_DIR" || true
-            exit 1
-          fi
-          if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython3 still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
-          fi
-          sudo ln -sf "$VPYTHON" /usr/local/bin/python
-          python --version
+          Add-Content -Path $env:GITHUB_PATH -Value "$pwd\packages\devtools-frontend-lynx\buildtools\depot_tools"
 
       - name: Sync devtools-gn (nohooks)
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH
-          pushd packages/devtools-frontend-lynx >/dev/null
+          $depot = Join-Path $pwd "packages\devtools-frontend-lynx\buildtools\depot_tools"
+          $env:PATH = "$depot;$env:PATH"
+          Push-Location "packages\devtools-frontend-lynx"
           gclient sync --gclientfile=.gclient --deps=all --nohooks
-          popd >/dev/null
+          Pop-Location
 
       - name: Build devtools-gn
         run: pnpm run build:devtools
