@@ -248,20 +248,20 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Symlink python to vpython (mac)
+      - name: Symlink python to vpython3 (mac)
         shell: bash
         run: |
           set -euo pipefail
           DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
-          VPYTHON="$DEPOT_DIR/vpython"
+          VPYTHON="$DEPOT_DIR/vpython3"
           if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython not found at $VPYTHON"
+            echo "Error: vpython3 not found at $VPYTHON"
             echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
             ls -la "$DEPOT_DIR" || true
             exit 1
           fi
           if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
+            echo "Error: vpython3 still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
           fi
           sudo ln -sf "$VPYTHON" /usr/local/bin/python
           python --version
@@ -452,20 +452,20 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Symlink python to vpython (mac)
+      - name: Symlink python to vpython3 (mac)
         shell: bash
         run: |
           set -euo pipefail
           DEPOT_DIR="$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools"
-          VPYTHON="$DEPOT_DIR/vpython"
+          VPYTHON="$DEPOT_DIR/vpython3"
           if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython not found at $VPYTHON"
+            echo "Error: vpython3 not found at $VPYTHON"
             echo "Hint: ensure 'Restore depot_tools cache' or prior 'Fetch depot_tools' succeeded."
             ls -la "$DEPOT_DIR" || true
             exit 1
           fi
           if [[ ! -x "$VPYTHON" ]]; then
-            echo "Error: vpython still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
+            echo "Error: vpython3 still not found at $VPYTHON"; ls -la "$DEPOT_DIR" || true; exit 1;
           fi
           sudo ln -sf "$VPYTHON" /usr/local/bin/python
           python --version
