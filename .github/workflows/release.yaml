@@ -541,8 +541,8 @@ jobs:
           $env:GCLIENT_CACHE_DISABLE = "1"
 
           Push-Location "packages\devtools-frontend-lynx"
-          # Use --cache-dir to specify a local cache directory and --no-history
-          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history --shallow --cache-dir="$env:TEMP\gclient_cache"
+          # Sync without hooks and with minimal history
+          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history --shallow
           Pop-Location
 
       - name: Download Windows dependencies manually
