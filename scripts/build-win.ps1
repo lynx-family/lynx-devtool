@@ -44,8 +44,8 @@ if (Test-Path $unpackedPath) {
         exit 1
     }
 } else {
-    Write-Host ("win-unpacked directory not found at: {0}" -f $unpackedPath) -ForegroundColor Red
-    Write-Host "electron-builder failed to create the unpacked directory" -ForegroundColor Red
+    Write-Host "win-unpacked directory not found at: $unpackedPath" -ForegroundColor Red
+    Write-Host 'electron-builder failed to create the unpacked directory' -ForegroundColor Red
     exit 1
 }
 
