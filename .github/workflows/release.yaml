@@ -215,7 +215,8 @@ jobs:
       PUPPETEER_SKIP_DOWNLOAD: true
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -254,11 +255,18 @@ jobs:
       - name: Fetch depot_tools
         run: pnpm run fetch:depot_tools
 
-      - name: Sync devtools-gn
+      - name: Add depot_tools & Python to PATH
         shell: pwsh
         run: |
-          $env:PATH = "$(Get-Location)\packages\devtools-frontend-lynx\buildtools\depot_tools;$env:PATH"
-          pnpm run sync:devtools-gn
+          $depot = "$(Get-Location)\packages\devtools-frontend-lynx\buildtools\depot_tools"
+          "$depot" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:pythonLocation | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          python --version
+          where.exe python
+
+      - name: Sync devtools-gn
+        shell: pwsh
+        run: pnpm run sync:devtools-gn
 
       - name: Build devtools-gn
         run: pnpm run build:devtools
