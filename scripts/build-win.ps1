@@ -1,9 +1,10 @@
 # Build Windows package
 # This script handles the electron-builder failures gracefully
 
-Write-Host "`n========================================"  -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Building Windows Package" -ForegroundColor Cyan
-Write-Host "========================================`n" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
 # Set environment variables
 $env:NODE_ENV = "production"
@@ -16,10 +17,10 @@ Write-Host "Running electron-builder..." -ForegroundColor Yellow
 try {
     npx electron-builder --win --x64 --dir 2>&1 | Out-Host
 } catch {
-    Write-Host "`nelectron-builder encountered errors" -ForegroundColor Yellow
+    Write-Host "electron-builder encountered errors" -ForegroundColor Yellow
 }
 
-Write-Host "`nChecking if win-unpacked was created..." -ForegroundColor Yellow
+Write-Host "Checking if win-unpacked was created..." -ForegroundColor Yellow
 
 # Check if win-unpacked exists
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -29,21 +30,21 @@ $unpackedPath = Join-Path -Path $distPath -ChildPath "win-unpacked"
 
 if (Test-Path $unpackedPath) {
     Write-Host "✓ win-unpacked directory found" -ForegroundColor Green
-    Write-Host "Proceeding to create ZIP package...`n" -ForegroundColor Green
+    Write-Host "Proceeding to create ZIP package..." -ForegroundColor Green
     
     # Run the pack script
     $packScript = Join-Path -Path $scriptPath -ChildPath "pack-windows.js"
     node $packScript
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "`nWindows package built successfully!`n" -ForegroundColor Green
+        Write-Host "Windows package built successfully!" -ForegroundColor Green
         exit 0
     } else {
-        Write-Host "`nZIP packaging failed`n" -ForegroundColor Red
+        Write-Host "ZIP packaging failed" -ForegroundColor Red
         exit 1
     }
 } else {
-    Write-Host "`nwin-unpacked directory not found at: $unpackedPath" -ForegroundColor Red
+    Write-Host ("win-unpacked directory not found at: {0}" -f $unpackedPath) -ForegroundColor Red
     Write-Host "electron-builder failed to create the unpacked directory" -ForegroundColor Red
     exit 1
 }
