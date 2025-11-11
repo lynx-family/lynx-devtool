@@ -267,6 +267,29 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
+      - name: Download missing dependencies
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          export PATH=$(pwd)/buildtools/depot_tools:$PATH
+          # Download Node.js if not cached properly
+          if [ ! -f "third_party/node/mac/node-darwin-x64/bin/node" ]; then
+            echo "Node.js not found in cache, downloading..."
+            python3 buildtools/depot_tools/download_from_google_storage.py \
+              --no_resume --extract \
+              --bucket chromium-nodejs/14.15.4 \
+              -s third_party/node/mac/node-darwin-x64.tar.gz.sha1
+          fi
+          # Download clang-format if not cached properly
+          if [ ! -f "buildtools/mac/clang-format" ]; then
+            echo "clang-format not found in cache, downloading..."
+            python3 buildtools/depot_tools/download_from_google_storage.py \
+              --no_resume \
+              --bucket chromium-clang-format \
+              -s buildtools/mac/clang-format.sha1
+          fi
+
       - name: Sync devtools-gn (nohooks)
         shell: bash
         run: |
@@ -492,14 +515,34 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "$pwd\packages\devtools-frontend-lynx\buildtools\depot_tools"
 
+      - name: Download missing dependencies
+        shell: pwsh
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          $depotPath = Join-Path $pwd "buildtools\depot_tools"
+          $env:PATH = "$depotPath;$env:PATH"
+
+          # Download Node.js if not cached properly
+          if (-not (Test-Path "third_party\node\win\node.exe")) {
+            Write-Host "Node.js not found in cache, downloading..."
+            python3 buildtools\depot_tools\download_from_google_storage.py --no_resume --bucket chromium-nodejs/14.15.4 -s third_party\node\win\node.exe.sha1
+          }
+
+          # Download mac dependencies if not cached properly
+          if (-not (Test-Path "third_party\node\mac\node-darwin-x64\bin\node")) {
+            Write-Host "Mac Node.js not found in cache, downloading..."
+            python3 buildtools\depot_tools\download_from_google_storage.py --no_resume --extract --bucket chromium-nodejs/14.15.4 -s third_party\node\mac\node-darwin-x64.tar.gz.sha1
+          }
+
       - name: Sync devtools-gn (nohooks)
         shell: pwsh
         run: |
           $depot = Join-Path $pwd "packages\devtools-frontend-lynx\buildtools\depot_tools"
           $env:PATH = "$depot;$env:PATH"
           $env:DEPOT_TOOLS_UPDATE = "0"
+          $env:GIT_CACHE_PATH = "$env:TEMP\git_cache"
           Push-Location "packages\devtools-frontend-lynx"
-          gclient sync --gclientfile=.gclient --deps=all --nohooks
+          gclient sync --gclientfile=.gclient --deps=all --nohooks --no-history
           Pop-Location
 
       - name: Build devtools-gn
