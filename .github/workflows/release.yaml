@@ -268,8 +268,29 @@ jobs:
       - name: Sync devtools-dist
         run: pnpm run sync:devtools-dist
 
-      - name: Build lynx-trace
-        run: pnpm run build:lynx-trace
+      - name: Download lynx-trace prebuilt artifact
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: KananSu/lynx-trace
+          latest: true
+          fileName: "perfetto-ui-*.tar.gz"
+          out-file-path: temp-lynx-trace
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy lynx-trace to resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Copying prebuilt lynx-trace artifact..."
+          src=$(find "temp-lynx-trace" -name "perfetto-ui-release-*.tar.gz" | head -n 1 || true)
+          dest="packages/lynx-devtool-cli/resources/lynx-trace.tar.gz"
+          if [[ -n "$src" ]]; then
+            cp -v "$src" "$dest"
+            echo "✓ lynx-trace artifact copied: $(basename "$src") -> lynx-trace.tar.gz"
+          else
+            echo "Warning: lynx-trace artifact not found, trace feature will be unavailable"
+            ls -la "temp-lynx-trace" || true
+          fi
 
       - name: Build all packages
         run: pnpm run build:all
@@ -432,9 +453,6 @@ jobs:
 
       - name: Sync devtools-dist
         run: pnpm run sync:devtools-dist
-
-      - name: Skip lynx-trace build on Windows
-        run: pnpm run build:lynx-trace
 
       - name: Download lynx-trace prebuilt artifact
         uses: robinraju/release-downloader@v1
