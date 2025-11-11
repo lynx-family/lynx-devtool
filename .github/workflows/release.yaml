@@ -18,6 +18,27 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
+
+      - name: Prepare buildtools directory
+        run: mkdir -p packages/devtools-frontend-lynx/buildtools
+
+      - name: Restore depot_tools cache
+        id: cache-depot-tools
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/depot_tools
+          key: depot_tools-v1
+          restore-keys: |
+            depot_tools-
+
+      - name: Clone depot_tools if missing (Linux)
+        shell: bash
+        run: |
+          if [ -d "packages/devtools-frontend-lynx/buildtools/depot_tools" ]; then
+            echo "depot_tools already exists, skipping clone"
+          else
+            git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "packages/devtools-frontend-lynx/buildtools/depot_tools" --depth=1
+          fi
       
       - name: Set release type
         id: release_type
@@ -79,6 +100,18 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Prepare buildtools directory
+        run: mkdir -p packages/devtools-frontend-lynx/buildtools
+
+      - name: Restore depot_tools cache
+        id: cache-depot-tools-macos
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/depot_tools
+          key: depot_tools-v1
+          restore-keys: |
+            depot_tools-
 
       - name: ln Python
         run: ln -s `which python3` /usr/local/bin/python
@@ -219,6 +252,21 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Prepare buildtools directory
+        shell: pwsh
+        run: |
+          $dir = "packages\devtools-frontend-lynx\buildtools"
+          if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+
+      - name: Restore depot_tools cache
+        id: cache-depot-tools-windows
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/depot_tools
+          key: depot_tools-v1
+          restore-keys: |
+            depot_tools-
 
       # Node and pnpm setup steps
       - name: Setup Node.js
