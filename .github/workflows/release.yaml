@@ -79,6 +79,15 @@ jobs:
           restore-keys: |
             chrome-mac-
 
+      - name: Restore Node (win) cache
+        id: cache-node-win-linux
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/node/win
+          key: node-win-14.15.4-v1
+          restore-keys: |
+            node-win-
+
       # Prefetch third-party resources on Linux container to populate caches
       - name: Prefetch Node (mac x64)
         shell: bash
@@ -89,6 +98,16 @@ jobs:
             --no_resume --extract \
             --bucket chromium-nodejs/14.15.4 \
             -s third_party/node/mac/node-darwin-x64.tar.gz.sha1
+
+      - name: Prefetch Node (win x64)
+        shell: bash
+        working-directory: packages/devtools-frontend-lynx
+        run: |
+          set -euo pipefail
+          python3 buildtools/depot_tools/download_from_google_storage.py \
+            --no_resume --extract \
+            --bucket chromium-nodejs/14.15.4 \
+            -s third_party/node/win/node.exe.sha1
 
       - name: Prefetch clang-format (mac)
         shell: bash
@@ -253,6 +272,7 @@ jobs:
         run: |
           set -euo pipefail
           export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH
+          export DEPOT_TOOLS_UPDATE=0
           pushd packages/devtools-frontend-lynx >/dev/null
           gclient sync --gclientfile=.gclient --deps=all --nohooks
           popd >/dev/null
@@ -395,6 +415,43 @@ jobs:
           restore-keys: |
             depot_tools-
 
+      # Restore cached third-party resources for Windows
+      - name: Restore Node (win) cache
+        id: cache-node-win
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/node/win
+          key: node-win-14.15.4-v1
+          restore-keys: |
+            node-win-
+
+      - name: Restore Node (mac) cache for cross-platform builds
+        id: cache-node-mac-win
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/node/mac
+          key: node-mac-14.15.4-v1
+          restore-keys: |
+            node-mac-
+
+      - name: Restore clang-format (mac) cache
+        id: cache-clang-mac-win
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/buildtools/mac
+          key: clang-format-mac-v1
+          restore-keys: |
+            clang-format-
+
+      - name: Restore Chromium (mac 902866) cache
+        id: cache-chrome-mac-win
+        uses: lynx-infra/cache@main
+        with:
+          path: packages/devtools-frontend-lynx/third_party/chrome
+          key: chrome-mac-902866-v1
+          restore-keys: |
+            chrome-mac-
+
       # Node and pnpm setup steps
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -440,6 +497,7 @@ jobs:
         run: |
           $depot = Join-Path $pwd "packages\devtools-frontend-lynx\buildtools\depot_tools"
           $env:PATH = "$depot;$env:PATH"
+          $env:DEPOT_TOOLS_UPDATE = "0"
           Push-Location "packages\devtools-frontend-lynx"
           gclient sync --gclientfile=.gclient --deps=all --nohooks
           Pop-Location
