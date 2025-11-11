@@ -105,7 +105,7 @@ jobs:
         working-directory: packages/devtools-frontend-lynx
         run: |
           set -euo pipefail
-          vpython scripts/deps/download_chromium.py \
+          python3 scripts/deps/download_chromium.py \
             https://commondatastorage.googleapis.com/chromium-browser-snapshots/Mac/902866/chrome-mac.zip \
             third_party/chrome \
             chrome-mac/Chromium.app/Contents \
@@ -248,14 +248,14 @@ jobs:
         shell: bash
         run: echo "$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools" >> $GITHUB_PATH
 
-      - name: Symlink python to vpython (mac)
+      - name: Symlink python to python3 (mac)
         shell: bash
         run: |
           set -euo pipefail
-          which vpython || {
-            echo "vpython not found in PATH"; exit 1;
+          which python3 || {
+            echo "python3 not found in PATH"; exit 1;
           }
-          sudo ln -sf "$(which vpython)" /usr/local/bin/python
+          sudo ln -sf "$(which python3)" /usr/local/bin/python
 
       - name: Sync devtools-gn
         run: |
