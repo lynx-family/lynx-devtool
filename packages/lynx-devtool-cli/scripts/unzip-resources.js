@@ -69,11 +69,35 @@ function extractTarGz(tarFile, destDir) {
     }
 }
 
-// Function to remove directory recursively
+// Function to remove directory recursively with platform-specific handling
 function removeDir(dirPath) {
-    if (fs.existsSync(dirPath)) {
-        fs.rmSync(dirPath, { recursive: true, force: true });
-        console.log(`Removed: ${dirPath}`);
+    if (!fs.existsSync(dirPath)) {
+        return;
+    }
+
+    try {
+        // On Windows, use native rmdir command which is more reliable
+        if (process.platform === 'win32') {
+            // Use cmd /c to ensure proper command execution
+            const absPath = path.resolve(dirPath);
+            runCommand(`cmd /c rmdir /s /q "${absPath}"`, { stdio: 'pipe' });
+            console.log(`Removed: ${dirPath}`);
+        } else {
+            // On Unix-like systems, use rm -rf
+            runCommand(`rm -rf "${dirPath}"`, { stdio: 'pipe' });
+            console.log(`Removed: ${dirPath}`);
+        }
+    } catch (error) {
+        // If command fails, try Node.js fs method
+        console.warn(`Command-based removal failed, trying Node.js fs...`);
+        try {
+            fs.rmSync(dirPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+            console.log(`Removed: ${dirPath}`);
+        } catch (fsError) {
+            console.warn(`Could not remove ${dirPath}: ${fsError.message}`);
+            console.warn(`Continuing anyway...`);
+            // Don't throw - allow the build to continue
+        }
     }
 }
 

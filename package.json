@@ -11,7 +11,7 @@
     "rsbuild:main": "rsbuild build --config rsbuild.config.ts",
     "build:all": "pnpm --filter @lynx-js/* run build && pnpm run build && pnpm run modern:renderer",
     "clean": "node -e \"const fs=require('fs'); ['dist', 'packages/devtools-frontend-lynx/out', 'packages/devtools-frontend-lynx/output'].forEach(p => fs.existsSync(p) && fs.rmSync(p, {recursive: true, force: true}))\" && pnpm -r exec node -e \"const fs=require('fs'); fs.existsSync('dist') && fs.rmSync('dist', {recursive: true, force: true})\"",
-    "build:devtools-frontend-lynx": "pnpm run fetch:depot_tools && export PATH=$(pwd)/packages/devtools-frontend-lynx/buildtools/depot_tools:$PATH && pnpm run sync:devtools-gn && pnpm run build:devtools && pnpm run sync:devtools-dist",
+    "build:devtools-frontend-lynx": "node scripts/build-devtools-frontend-lynx.js",
     "fetch:depot_tools": "node scripts/fetch-depot-tools.js",
     "sync:devtools-gn": "gclient sync --gclientfile=.gclient --deps=all",
     "build:devtools": "node scripts/build-lynx-devtools.js",

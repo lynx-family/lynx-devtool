@@ -27,15 +27,31 @@ function copyDir(src: string, dest: string) {
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
   }
-  const entries = fs.readdirSync(src);
+
+  let entries;
+  try {
+    entries = fs.readdirSync(src);
+  } catch (error: any) {
+    defaultLogger.warn(`Failed to read directory ${src}: ${error.message}`);
+    return;
+  }
+
   for (const entry of entries) {
     const srcPath = path.join(src, entry);
     const destPath = path.join(dest, entry);
-    const stat = fs.statSync(srcPath);
-    if (stat.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
+
+    try {
+      const stat = fs.statSync(srcPath);
+      if (stat.isDirectory()) {
+        copyDir(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    } catch (error: any) {
+      // On Windows, some files might be locked or have permission issues
+      // Log the error but continue with other files
+      defaultLogger.warn(`Failed to copy ${srcPath}: ${error.message}. Skipping...`);
+      continue;
     }
   }
 }
@@ -107,7 +123,22 @@ export async function setupResource(
 
     // handle the path in dev mode, must copy the resources from the source code
     if (!isPackagedApp) {
-      fs.rmSync(ldtPath, { recursive: true, force: true });
+      // Clean up the target directory more aggressively on Windows
+      try {
+        fs.rmSync(ldtPath, { recursive: true, force: true });
+      } catch (error: any) {
+        defaultLogger.warn(`Failed to remove ${ldtPath} via fs.rmSync: ${error.message}`);
+        // On Windows, try using system command which is more reliable
+        if (process.platform === 'win32') {
+          try {
+            const { execSync } = require('child_process');
+            execSync(`cmd /c rmdir /s /q "${path.resolve(ldtPath)}"`, { stdio: 'pipe' });
+            defaultLogger.info(`Removed ${ldtPath} via system command`);
+          } catch (cmdError: any) {
+            defaultLogger.warn(`Could not clean ${ldtPath}: ${cmdError.message}`);
+          }
+        }
+      }
 
       defaultLogger.info(`=== updator: Update dev Static Resources ===`);
 
@@ -195,7 +226,22 @@ export async function setupResource(
         (isPackagedApp && resType === "dev") ||
         (isPackagedApp && resType === "prod" && resVersion !== innerVersion)
       ) {
-        fs.rmSync(ldtPath, { recursive: true, force: true });
+        // Clean up the target directory more aggressively on Windows
+        try {
+          fs.rmSync(ldtPath, { recursive: true, force: true });
+        } catch (error: any) {
+          defaultLogger.warn(`Failed to remove ${ldtPath} via fs.rmSync: ${error.message}`);
+          // On Windows, try using system command which is more reliable
+          if (process.platform === 'win32') {
+            try {
+              const { execSync } = require('child_process');
+              execSync(`cmd /c rmdir /s /q "${path.resolve(ldtPath)}"`, { stdio: 'pipe' });
+              defaultLogger.info(`Removed ${ldtPath} via system command`);
+            } catch (cmdError: any) {
+              defaultLogger.warn(`Could not clean ${ldtPath}: ${cmdError.message}`);
+            }
+          }
+        }
 
         defaultLogger.info(`=== updator: Update prod Static Resources ===`);
         defaultLogger.info(`isPackagedApp: ${isPackagedApp}`);

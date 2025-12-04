@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run build:devtools-frontend-lynx:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
