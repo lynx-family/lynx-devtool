@@ -73,7 +73,19 @@ class HttpServer {
 
       app.use('/localResource/file', express.static(filePath));
       app.use('/localResource/devtool', express.static(devtoolPath, disableCacheConfig));
-      app.use('/localResource/trace', express.static(tracePath));
+      
+      // Skip trace on Windows as it's not supported
+      if (process.platform !== 'win32') {
+        app.use('/localResource/trace', express.static(tracePath));
+      } else {
+        // Return 503 Service Unavailable for trace requests on Windows
+        app.use('/localResource/trace', (req, res) => {
+          res.status(503).json({
+            error: 'Trace feature is not available on Windows platform',
+            message: 'lynx-trace build is not supported on Windows. Please use macOS or Linux.'
+          });
+        });
+      }
 
       // apis
       app.post('/uploadFileToLocal', (req: any, res: any) => {

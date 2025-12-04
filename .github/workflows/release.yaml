@@ -206,8 +206,6 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: recursive
 
       # Node and pnpm setup steps
       - name: Setup Node.js

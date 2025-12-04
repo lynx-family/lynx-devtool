@@ -207,14 +207,12 @@ function main() {
         // Install build dependencies
         if (fs.existsSync(installBuildDepsPath)) {
             try {
-                // Make the script executable on Unix-like systems
-                if (process.platform !== 'win32') {
-                    fs.chmodSync(installBuildDepsPath, '755');
-                }
+                // Make the script executable
+                fs.chmodSync(installBuildDepsPath, '755');
 
                 console.log('Running install-build-deps...');
                 runCommand(`"${installBuildDepsPath}" --no-dev-tools --ui`, {
-                    stdio: 'inherit' // Show all output for debugging
+                    stdio: ['inherit', 'inherit', 'pipe'] // Redirect stderr to pipe to suppress some warnings
                 });
                 console.log('install-build-deps completed');
             } catch (error) {
@@ -284,16 +282,8 @@ function main() {
             // Try to run the shell script as fallback
             const buildScriptPath = path.join('ui', 'build');
             if (fs.existsSync(buildScriptPath)) {
-                if (process.platform === 'win32') {
-                    try {
-                        runCommand(`bash "${buildScriptPath}" --no-depscheck --minify-js all`);
-                    } catch (error) {
-                        throw new Error('Both build.js and shell script execution failed');
-                    }
-                } else {
-                    fs.chmodSync(buildScriptPath, '755');
-                    runCommand(`"${buildScriptPath}" --no-depscheck --minify-js all`);
-                }
+                fs.chmodSync(buildScriptPath, '755');
+                runCommand(`"${buildScriptPath}" --no-depscheck --minify-js all`);
             } else {
                 throw new Error('Build script not found at ui/build.js or ui/build');
             }
@@ -315,28 +305,20 @@ function main() {
         }
 
         // Create tar.gz archive
+        process.chdir(outputDir);
         console.log('Creating tar.gz archive...');
 
         try {
-            // Create tar.gz in a temp location outside output directory
-            // to avoid "file changed as we read it" error
-            const tempTarPath = path.join('..', 'lynx-trace-temp.tar.gz');
-            const finalTarPath = path.join(outputDir, 'lynx-trace.tar.gz');
-            
-            // Create archive from output directory contents
-            runCommand(`tar -czf ${tempTarPath} -C ${outputDir} .`);
-            
-            // Move to final location
-            if (fs.existsSync(tempTarPath)) {
-                fs.renameSync(tempTarPath, finalTarPath);
-                console.log('Created lynx-trace.tar.gz successfully');
-            } else {
-                throw new Error('tar.gz file was not created');
-            }
+            runCommand('tar -czf lynx-trace.tar.gz --exclude=lynx-trace.tar.gz .');
+            console.log('Created lynx-trace.tar.gz successfully');
         } catch (error) {
-            console.warn('tar command failed:', error.message);
+            console.warn('tar command failed, trying alternative archive method...');
+            // Could implement alternative archiving method here if needed
             throw error;
         }
+
+        // Go back to project root
+        process.chdir(projectRoot);
 
         // Sync the built file to resources
         const aPath = 'packages/lynx-trace/output';

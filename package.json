@@ -149,7 +149,8 @@
     "linux": {
       "target": "AppImage"
     },
-    "publish": null
+    "publish": null,
+    "npmRebuild": false
   },
   "pnpm": {
     "overrides": {
