@@ -260,9 +260,9 @@ jobs:
       - name: Download lynx-trace prebuilt artifact
         uses: robinraju/release-downloader@v1
         with:
-          repository: KananSu/lynx-trace
+          repository: lynx-family/lynx-trace
           latest: true
-          fileName: "perfetto-ui-release-*.tar.gz"
+          fileName: "perfetto-ui-*.tar.gz"
           out-file-path: temp-lynx-trace
           token: ${{ secrets.GITHUB_TOKEN }}
 
