@@ -236,50 +236,11 @@ jobs:
       - name: Fetch depot_tools
         run: pnpm run fetch:depot_tools
 
-      - name: Locate Python (Windows)
-        shell: pwsh
-        run: |
-          # Try to find python via direct command
-          $pythonExe = $null
-          $cmd = Get-Command python -ErrorAction SilentlyContinue
-          if ($cmd) { $pythonExe = $cmd.Source }
-
-          # Fallback: use Windows Python launcher to discover installed versions
-          if (-not $pythonExe) {
-            $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
-            if ($pyLauncher) {
-              try {
-                $paths = & py -0p
-                if ($paths) {
-                  $pythonExe = ($paths -split "`r?`n" | Where-Object { $_ -like "*python.exe" } | Select-Object -First 1)
-                }
-              } catch {
-                Write-Host "py launcher exists but failed to enumerate versions" -ForegroundColor Yellow
-              }
-            }
-          }
-
-          # Fallback: common hostedtoolcache locations on GitHub Windows runners
-          if (-not $pythonExe) {
-            $candidates = @(
-              'C:\hostedtoolcache\windows\Python\3.12.6\x64\python.exe',
-              'C:\hostedtoolcache\windows\Python\3.11.9\x64\python.exe',
-              'C:\hostedtoolcache\windows\Python\3.10.11\x64\python.exe'
-            )
-            foreach ($p in $candidates) { if (Test-Path $p) { $pythonExe = $p; break } }
-          }
-
-          if (-not $pythonExe) {
-            Write-Error "Python not found. Please ensure it's available on the runner or install actions/setup-python."
-            exit 1
-          }
-
-          $pythonDir = Split-Path -Path $pythonExe -Parent
-          echo $pythonDir >> $env:GITHUB_PATH
-          echo "PYTHON=$pythonExe" >> $env:GITHUB_ENV
-
-          Write-Host "Using Python at: $pythonExe" -ForegroundColor Green
-          python --version
+      - name: Setup Python 3.9 (Windows)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          architecture: 'x64'
 
       - name: Sync devtools-gn
         shell: pwsh
