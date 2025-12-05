@@ -309,7 +309,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Write-Host "Starting Windows build..." -ForegroundColor Cyan
-          powershell -ExecutionPolicy Bypass -File scripts\build-win.ps1
+          pwsh -ExecutionPolicy Bypass -File scripts\build-win.ps1
           
       - name: Find Windows ZIP file
         id: find_zip
