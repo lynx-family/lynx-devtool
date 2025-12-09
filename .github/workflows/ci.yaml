@@ -78,11 +78,6 @@ jobs:
           pnpm run sync:devtools-dist
           echo "sync:devtools-dist done"
 
-      - name: Build lynx-trace
-        run: |
-          pnpm run build:lynx-trace
-          echo "build:lynx-trace done"
-
       - name: Build all packages
         run: |
           pnpm run build:all
