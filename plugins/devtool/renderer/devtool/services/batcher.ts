@@ -10,7 +10,7 @@ import {
 import { ICDPMessageDispatcher } from '../types';
 import { IDebugDriver } from '@lynx-js/devtool-plugin-core/renderer';
 
-const MAX_MESSAGE_POOL_SIZE = 100;
+const MAX_MESSAGE_POOL_SIZE = 1000;
 
 class CDPMessageDispatcher implements ICDPMessageDispatcher {
   private _callbackMap: Map<string, (message: ICustomDataWrapper<ECustomDataType.CDP>) => void> = new Map();
@@ -58,7 +58,8 @@ class CDPMessageDispatcher implements ICDPMessageDispatcher {
       clientPool[sessionId] = [];
     }
     if (clientPool[sessionId].length >= MAX_MESSAGE_POOL_SIZE) {
-      clientPool[sessionId].shift();
+      const droppedMessage = clientPool[sessionId].shift();
+      console.warn('CDP message pool is full, dropping message: ', droppedMessage);
     }
     clientPool[sessionId].push(message);
   }
