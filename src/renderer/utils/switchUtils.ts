@@ -6,6 +6,75 @@ import debugDriver from './debugDriver';
 import { getStore } from './flooks';
 import useConnection from '../hooks/connection';
 
+export async function setGlobalSwitch(params: any) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({ params, type: 'SetGlobalSwitch' });
+    if (typeof result === 'object') {
+      return result?.global_value === 'true' || result?.global_value === true;
+    } else {
+      return result === 'true' || result === true;
+    }
+  } catch (error) {
+    console.error('setGlobalSwitch error', error);
+    return false;
+  }
+}
+
+export async function getGlobalSwitch(params: any) {
+  try {
+    const result = await debugDriver.sendCustomMessageAsync({ params, type: 'GetGlobalSwitch' });
+    if (typeof result === 'object') {
+      return result?.global_value === 'true' || result?.global_value === true;
+    } else {
+      return result === 'true' || result === true;
+    }
+  } catch (error) {
+    console.error('getGlobalSwitch error', error);
+    return true;
+  }
+}
+
+export async function getSwitchStatus(key: string) {
+  const params = {
+    global_key: key
+  };
+  return await getGlobalSwitch(params);
+}
+
+export async function openDevtool(open: boolean) {
+  try {
+    const params = {
+      global_key: 'enable_devtool',
+      global_value: open
+    };
+    const result = await setGlobalSwitch(params);
+    if (result !== open) {
+      return false;
+    }
+  } catch (error) {
+    console.error('openDevtool error', error);
+    return false;
+  }
+  return true;
+}
+
+export async function openDomTree(open: boolean) {
+  try {
+    const params = {
+      global_key: 'enable_dom_tree',
+      global_value: open
+    };
+    const result = await setGlobalSwitch(params);
+    if (result !== open) {
+      return false;
+    }
+  } catch (error) {
+    console.error('openDomTree error', error);
+    return false;
+  }
+  return true;
+}
+
 function updateDeviceInfo(info: string, type: string, value: boolean) {
   const currentClientId = debugDriver.getSelectClientId();
   if (currentClientId === undefined) {

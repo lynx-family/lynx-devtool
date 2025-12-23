@@ -11,13 +11,48 @@ import debugDriver from '@/renderer/utils/debugDriver';
 import { setSimulatorViewMode } from '@/renderer/utils/ldtApi';
 import { IDevice } from '@lynx-js/devtool-plugin-core/renderer';
 import { DesktopOutlined, MobileOutlined } from '@ant-design/icons';
-import { Dropdown, Button } from 'antd';
+import { Dropdown, Button, notification } from 'antd';
 import { MenuProps } from 'antd';
 import { useEffect, useMemo } from 'react';
 import './DeviceSelect.scss';
 import IconPlatform from './IconPlatform/IconPlatform';
 import useldtConnection from '@/renderer/ldt/store/ldtConnection';
-import { getStopAtEntry, getFetchDebugInfo } from '@/renderer/utils/switchUtils';
+import { getStopAtEntry, getFetchDebugInfo, getSwitchStatus, openDevtool, openDomTree } from '@/renderer/utils/switchUtils';
+
+let notificationKey = '';
+
+interface SwitchNotificationContentProps {
+  devtoolSwitch: boolean;
+  domTreeSwitch: boolean;
+  close: () => void;
+}
+
+function SwitchNotificationContent({ devtoolSwitch, domTreeSwitch, close }: SwitchNotificationContentProps) {
+  const handleEnableAll = async () => {
+    const results = await Promise.all([
+      !devtoolSwitch ? openDevtool(true) : Promise.resolve(true),
+      !domTreeSwitch ? openDomTree(true) : Promise.resolve(true)
+    ]);
+    if (results.every(Boolean)) {
+      close();
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ marginBottom: 8 }}>
+        The following switches need to be enabled for DevTool to work properly:
+      </p>
+      <ul style={{ marginBottom: 12, paddingLeft: 20 }}>
+        {!devtoolSwitch && <li>enable_devtool</li>}
+        {!domTreeSwitch && <li>enable_dom_tree</li>}
+      </ul>
+      <Button type="primary" size="small" onClick={handleEnableAll}>
+        Enable All
+      </Button>
+    </div>
+  );
+}
 
 export default function DeviceSelect() {
   const { deviceList, selectedDevice, setSelectedDevice } = useConnection();
@@ -25,11 +60,43 @@ export default function DeviceSelect() {
 
   useEffect(() => {
     setCurrentDevice(xdbDriver.getCurrentDevice());
+    checkDevtoolSwitch();
     getStopAtEntry('DEFAULT');
     getStopAtEntry('MTS');
     getFetchDebugInfo('MTS');
   }, [selectedDevice]);
 
+  const checkDevtoolSwitch = async () => {
+    const devtoolSwitch = await getSwitchStatus('enable_devtool');
+    const domTreeSwitch = await getSwitchStatus('enable_dom_tree');
+    const currentClientId = debugDriver.getSelectClientId();
+    if ((!devtoolSwitch || !domTreeSwitch) && currentClientId === selectedDevice?.clientId) {
+      if (notificationKey !== '') {
+        notification.destroy(notificationKey);
+      }
+      notificationKey = `devtool-switch-${Date.now()}`;
+      notification.warning({
+        key: notificationKey,
+        message: 'DevTool Switch Required',
+        description: (
+          <SwitchNotificationContent
+            devtoolSwitch={devtoolSwitch}
+            domTreeSwitch={domTreeSwitch}
+            close={closeNotification}
+          />
+        ),
+        duration: 0
+      });
+    }
+  };
+
+  const closeNotification = () => {
+    if (notificationKey !== '') {
+      notification.destroy(notificationKey);
+      notificationKey = '';
+    }
+  };
+  
   function combieDevices(groupKey: 'App' | 'deviceModel' = 'App'): IDevice[] {
     const sortList = deviceList
       .filter((item) => item.clientId && item.info?.deviceType !== 'simulator')
