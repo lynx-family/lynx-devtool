@@ -189,7 +189,7 @@ export default class PluginManager {
           const valid = this.isValid(plugin);
 
           // @ts-ignore
-          const pluginMain = valid ? __non_webpack_require__(path.join(pluginPath, 'dist', 'main', 'index.js')) : null;
+          const pluginMain = valid ? __non_webpack_require__(path.join(pluginPath, 'dist', 'index.js')) : null;
           // @ts-ignore
           const pluginPkgJson = __non_webpack_require__(path.join(pluginPath, 'package.json'));
           const { simulatorPlugin = {}, name, description } = pluginPkgJson;
