@@ -174,6 +174,7 @@ export default class PluginManager {
     const internalPluginsMeta = pluginConfig.plugins.filter((plugin) => plugin.isInternal);
     const externalPluginsMeta = pluginConfig.plugins.filter((plugin) => !plugin.isInternal);
     const internalPlugins = INTERNAL_MAIN_PLUGINS.map((plugin) => {
+      console.log('internal plugin', plugin);
       const disable = internalPluginsMeta.find((p) => p.id === plugin.id)?.disable;
       return {
         disable: disable ?? false,
@@ -184,6 +185,11 @@ export default class PluginManager {
     });
     const externalPlugins = externalPluginsMeta
       .map((plugin) => {
+        console.log('external plugin', plugin);
+        // 非平台插件
+        if (plugin.platformPlugin) {
+          return null;
+        }
         try {
           const pluginPath = plugin.path;
           const valid = this.isValid(plugin);
@@ -246,7 +252,7 @@ export default class PluginManager {
       })
       .filter((plugin) => plugin !== null);
     this.platformPlugins = platformPlugins;
-    this.plugins = [...internalPlugins, ...externalPlugins, ...platformPlugins].filter((plugin) => plugin.visible);
+    this.plugins = [...internalPlugins, ...externalPlugins].filter((plugin) => plugin.visible);
   }
   install(options) {
     this.installOptions = options;

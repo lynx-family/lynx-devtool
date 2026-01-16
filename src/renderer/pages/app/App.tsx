@@ -54,26 +54,28 @@ const App = () => {
           const p = internalPluginsMeta.find((item) => item.id === plugin.id);
           return { disable: p?.disable ?? false, ...plugin, valid: p?.valid ?? true, visible: Boolean(p) || false };
         }).filter((p) => p.visible);
-        const externalPlugins: ProcessedPluginMeta[] = externalPluginsMeta.map((meta) => {
-          const { path, ...others } = meta;
-          const entry = requireWithCatch(`${path}/dist/entry/index.js`)?.default;
-          const plugin = requireWithCatch(`${path}/dist/renderer/index.js`)?.default;
-          const { name, description, simulatorPlugin } = requireWithCatch(`${path}/package.json`) || ({} as any);
-          console.log('--------------------------------');
-          console.log(meta);
-          console.log(name, description, simulatorPlugin);
-          console.log('--------------------------------');
+        const externalPlugins: ProcessedPluginMeta[] = externalPluginsMeta
+          .map((meta) => {
+            const { path, ...others } = meta;
+            const entry = requireWithCatch(`${path}/dist/entry/index.js`)?.default;
+            const plugin = requireWithCatch(`${path}/dist/renderer/index.js`)?.default;
+            const { name, description, simulatorPlugin, platformPlugin } =
+              requireWithCatch(`${path}/package.json`) || ({} as any);
+            console.log('--------------------------------');
+            console.log(meta);
+            console.log('--------------------------------');
 
-          return {
-            ...others,
-            entry,
-            plugin,
-            id: name,
-            description,
-            valid: meta.valid,
-            ...simulatorPlugin
-          };
-        });
+            return {
+              ...others,
+              entry,
+              plugin,
+              id: name,
+              description,
+              valid: meta.valid,
+              ...simulatorPlugin
+            };
+          })
+          .filter(Boolean) as ProcessedPluginMeta[];
         const internalGroupedPlugins = organizePluginsByGroup(internalPlugins);
         const externalGroupedPlugins = organizePluginsByGroup(externalPlugins);
 
