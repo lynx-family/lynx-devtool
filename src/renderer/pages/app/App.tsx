@@ -59,7 +59,7 @@ const App = () => {
             const { path, ...others } = meta;
             const entry = requireWithCatch(`${path}/dist/entry/index.js`)?.default;
             const plugin = requireWithCatch(`${path}/dist/renderer/index.js`)?.default;
-            const { name, description, simulatorPlugin, platformPlugin } =
+            const { name, description, simulatorPlugin } =
               requireWithCatch(`${path}/package.json`) || ({} as any);
             console.log('--------------------------------');
             console.log(meta);

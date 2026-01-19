@@ -1,0 +1,15 @@
+      {
+        "id": "@byted-hdt/plugin-jsb",
+        "name": "OpenAPI",
+        "disable": false,
+        "path": "/Users/bytedance/code2/lynx_bussiness/new_hdt/common/packages/plugins/jsb",
+        "hasView": true,
+        "mode": "radio",
+        "isInternal": true,
+        "platformPlugin": {
+          "entry": "dist/index.js",
+          "location": "panel",
+          "type": "lynx",
+          "isValid": "true"
+        }
+      }

@@ -36,6 +36,7 @@ const INTERNAL_MAIN_PLUGINS = meta;
 
 type PlatformPluginMeta = {
   _id: string;
+  id: string;
   name: string;
   type: string;
   location: string;
@@ -44,7 +45,11 @@ type PlatformPluginMeta = {
   path: string;
   disable: boolean;
   visible: boolean;
-  isValid: string;
+  valid: boolean;
+  mode: string;
+  hasView: boolean;
+  plugin: any;
+  platformPlugin: any;
   /**
    * Plugin grouping field
    * Plugins with the same group will be merged into one entry, with name as the navigation bar name
@@ -81,7 +86,7 @@ const PLUGIN_MANAGER_GLOBAL_NAME = 'PLUGIN_MANAGER_GLOBAL_NAME';
 
 export default class PluginManager {
   plugins: PluginMeta[];
-  platformPlugins: PluginMeta[];
+  platformPlugins: PlatformPluginMeta[];
   installOptions: any;
   private win: BrowserWindow | null = null;
   private context: MainContext & { window: BrowserWindow | null };
@@ -174,6 +179,10 @@ export default class PluginManager {
     const internalPluginsMeta = pluginConfig.plugins.filter((plugin) => plugin.isInternal);
     const externalPluginsMeta = pluginConfig.plugins.filter((plugin) => !plugin.isInternal);
     const internalPlugins = INTERNAL_MAIN_PLUGINS.map((plugin) => {
+      // 非平台插件
+      if (plugin.platformPlugin) {
+        return null;
+      }
       console.log('internal plugin', plugin);
       const disable = internalPluginsMeta.find((p) => p.id === plugin.id)?.disable;
       return {
@@ -182,7 +191,8 @@ export default class PluginManager {
         valid: this.isValid(plugin),
         ...plugin
       };
-    });
+    }).filter((plugin) => plugin !== null);
+    
     const externalPlugins = externalPluginsMeta
       .map((plugin) => {
         console.log('external plugin', plugin);
@@ -217,7 +227,7 @@ export default class PluginManager {
       })
       .filter((plugin) => plugin !== null);
 
-    const platformPlugins = externalPluginsMeta
+    const platformPlugins = [...externalPluginsMeta, ...INTERNAL_MAIN_PLUGINS]
       // @ts-ignore
       .map((plugin) => {
         try {
@@ -250,7 +260,7 @@ export default class PluginManager {
           return null;
         }
       })
-      .filter((plugin) => plugin !== null);
+      .filter((plugin): plugin is PlatformPluginMeta => plugin !== null && plugin !== undefined);
     this.platformPlugins = platformPlugins;
     this.plugins = [...internalPlugins, ...externalPlugins].filter((plugin) => plugin.visible);
   }
