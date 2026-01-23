@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/devtools-web-simulator",
-  "version": "0.1.1",
+  "version": "0.1.1-temp.windows.ci.36",
   "private": true,
   "type": "module",
   "scripts": {
