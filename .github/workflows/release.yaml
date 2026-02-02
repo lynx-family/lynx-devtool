@@ -4,7 +4,9 @@ on:
   push:
     tags:
       - 'v*'
-      
+  workflow_dispatch:
+
+
 permissions:
   contents: write
   
@@ -45,6 +47,7 @@ jobs:
           fi
 
       - name: Create Release
+        if: github.event_name == 'push'
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -127,8 +130,8 @@ jobs:
       - name: Sync devtools-dist
         run: pnpm run sync:devtools-dist
 
-      - name: Find and Upload Frontend to Release
-        id: upload_frontend
+      - name: Find Frontend Archive
+        id: find_frontend
         run: |
           ARCHIVE_PATH=$(find ./packages/devtools-frontend-lynx/output -name "devtool.frontend.lynx_1.0.*.tar.gz" | head -n 1)
           if [ -z "$ARCHIVE_PATH" ]; then
@@ -140,20 +143,32 @@ jobs:
           echo "archive_path=${ARCHIVE_PATH}" >> $GITHUB_OUTPUT
           echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Upload Frontend to Release
+        if: github.event_name == 'push'
+        run: |
           curl \
             -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/gzip" \
-            --data-binary @"${ARCHIVE_PATH}" \
+            --data-binary @"${{ steps.find_frontend.outputs.archive_path }}" \
             "${{ needs.create-release.outputs.upload_url }}?name=devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
 
       - name: Upload Frontend as Artifact
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         id: artifact_info
         with:
           name: devtools-frontend-lynx
-          path: ${{ steps.upload_frontend.outputs.archive_path }}
+          path: ${{ steps.find_frontend.outputs.archive_path }}
           retention-days: 1
+
+      - name: Upload Frontend as Custom Artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: devtools-frontend-lynx
+          path: ${{ steps.find_frontend.outputs.archive_path }}
 
   build-and-upload-macos:
     needs: [create-release, build-frontend]
@@ -260,6 +275,7 @@ jobs:
           echo "dmg_filename=${DMG_FILENAME}" >> $GITHUB_OUTPUT
 
       - name: Upload ${{ matrix.arch }} DMG
+        if: github.event_name == 'push'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -268,6 +284,14 @@ jobs:
           asset_path: ${{ steps.find_dmg.outputs.dmg_path }}
           asset_name: ${{ steps.find_dmg.outputs.dmg_filename }}
           asset_content_type: application/x-apple-diskimage
+
+      - name: Upload ${{ matrix.arch }} DMG as Artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: lynx-devtool-mac-${{ matrix.arch }}
+          path: ${{ steps.find_dmg.outputs.dmg_path }}
 
   build-and-upload-windows:
     needs: [create-release, build-frontend]
@@ -374,6 +398,7 @@ jobs:
           }
 
       - name: Upload Windows ZIP Package  
+        if: github.event_name == 'push'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -382,3 +407,11 @@ jobs:
           asset_path: ${{ steps.find_zip.outputs.zip_path }}
           asset_name: ${{ steps.find_zip.outputs.zip_filename }}
           asset_content_type: application/zip
+
+      - name: Upload Windows ZIP as Artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: lynx-devtool-windows-x64
+          path: ${{ steps.find_zip.outputs.zip_path }}
