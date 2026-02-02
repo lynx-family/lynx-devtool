@@ -6,7 +6,6 @@ on:
       - 'v*'
   workflow_dispatch:
 
-
 permissions:
   contents: write
   
@@ -212,8 +211,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download DevTools Frontend
+      - name: Download DevTools Frontend (Push)
+        if: github.event_name == 'push'
         uses: actions/download-artifact@v4
+        with:
+          name: devtools-frontend-lynx
+          path: temp-frontend
+
+      - name: Download DevTools Frontend (Workflow Dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: devtools-frontend-lynx
           path: temp-frontend
@@ -327,8 +334,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download DevTools Frontend
+      - name: Download DevTools Frontend (Push)
+        if: github.event_name == 'push'
         uses: actions/download-artifact@v4
+        with:
+          name: devtools-frontend-lynx
+          path: temp-frontend
+
+      - name: Download DevTools Frontend (Workflow Dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: devtools-frontend-lynx
           path: temp-frontend
