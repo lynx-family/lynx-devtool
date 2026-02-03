@@ -153,21 +153,12 @@ jobs:
             "${{ needs.create-release.outputs.upload_url }}?name=devtool.frontend.lynx-${{ needs.create-release.outputs.asset_suffix }}.tar.gz"
 
       - name: Upload Frontend as Artifact
-        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         id: artifact_info
         with:
           name: devtools-frontend-lynx
           path: ${{ steps.find_frontend.outputs.archive_path }}
           retention-days: 1
-
-      - name: Upload Frontend as Custom Artifact
-        if: github.event_name == 'workflow_dispatch'
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
-        continue-on-error: true
-        with:
-          name: devtools-frontend-lynx
-          path: ${{ steps.find_frontend.outputs.archive_path }}
 
   build-and-upload-macos:
     needs: [create-release, build-frontend]
@@ -211,16 +202,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download DevTools Frontend (Push)
-        if: github.event_name == 'push'
+      - name: Download DevTools Frontend
         uses: actions/download-artifact@v4
-        with:
-          name: devtools-frontend-lynx
-          path: temp-frontend
-
-      - name: Download DevTools Frontend (Workflow Dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: devtools-frontend-lynx
           path: temp-frontend
@@ -334,16 +317,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download DevTools Frontend (Push)
-        if: github.event_name == 'push'
+      - name: Download DevTools Frontend
         uses: actions/download-artifact@v4
-        with:
-          name: devtools-frontend-lynx
-          path: temp-frontend
-
-      - name: Download DevTools Frontend (Workflow Dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: devtools-frontend-lynx
           path: temp-frontend
