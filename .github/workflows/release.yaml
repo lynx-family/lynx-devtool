@@ -220,10 +220,16 @@ jobs:
 
       - name: Download DevTools Frontend (Workflow Dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: lynx-infra/download-artifact@eba11c081a5b3456e39b6c5118d330f8d4f7a38a
         with:
           name: devtools-frontend-lynx
           path: temp-frontend
+        env:
+          TOS_ACCESS_KEY: ${{ secrets.TOS_ACCESS_KEY }}
+          TOS_SECRET_KEY: ${{ secrets.TOS_SECRET_KEY }}
+          TOS_BUCKET_NAME: ${{ vars.TOS_BUCKET_NAME }}
+          TOS_REGION: ${{ secrets.TOS_REGION }}
+          TOS_ENDPOINT: ${{ secrets.TOS_ENDPOINT }}
 
       - name: Extract DevTools Frontend
         run: |
