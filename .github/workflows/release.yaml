@@ -347,7 +347,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Copying prebuilt lynx-trace artifact..." -ForegroundColor Cyan
-          $sourceFile = Get-ChildItem -Path "temp-lynx-trace" -Filter "perfetto-ui-release-*.tar.gz" | Select-Object -First 1
+          $sourceFile = Get-ChildItem -Path "temp-lynx-trace" -Filter "perfetto-ui-*.tar.gz" | Select-Object -First 1
           $destPath = "packages\lynx-devtool-cli\resources\lynx-trace.tar.gz"
           
           if ($sourceFile) {
