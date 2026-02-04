@@ -328,7 +328,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "packages\devtools-frontend-lynx\output"
           $archivePath = Get-ChildItem -Path "temp-frontend" -Filter "devtool.frontend.lynx_*.tar.gz" | Select-Object -First 1 -ExpandProperty FullName
-          tar -xzf "$archivePath" -C "packages\devtools-frontend-lynx\output"
+          C:\Windows\System32\tar.exe -xzf "$archivePath" -C "packages\devtools-frontend-lynx\output"
           Write-Host "DevTools Frontend extracted successfully"
 
       - name: Skip lynx-trace build on Windows
