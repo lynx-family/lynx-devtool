@@ -126,9 +126,6 @@ jobs:
       - name: Build devtools-gn
         run: pnpm run build:devtools
 
-      - name: Sync devtools-dist
-        run: pnpm run sync:devtools-dist
-
       - name: Find Frontend Archive
         id: find_frontend
         run: |
@@ -208,12 +205,15 @@ jobs:
           name: devtools-frontend-lynx
           path: temp-frontend
 
-      - name: Extract DevTools Frontend
+      - name: Setup DevTools Frontend
         run: |
           mkdir -p packages/devtools-frontend-lynx/output
           ARCHIVE_PATH=$(find temp-frontend -name "devtool.frontend.lynx_*.tar.gz" | head -n 1)
-          tar -xzf "$ARCHIVE_PATH" -C packages/devtools-frontend-lynx/output
-          echo "DevTools Frontend extracted successfully"
+          mv "$ARCHIVE_PATH" packages/devtools-frontend-lynx/output/
+          echo "DevTools Frontend archive moved successfully"
+
+      - name: Sync DevTools Frontend
+        run: pnpm run sync:devtools-dist
 
       - name: Build lynx-trace
         run: pnpm run build:lynx-trace
@@ -323,16 +323,16 @@ jobs:
           name: devtools-frontend-lynx
           path: temp-frontend
 
-      - name: Extract DevTools Frontend
+      - name: Setup DevTools Frontend
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "packages\devtools-frontend-lynx\output"
           $archivePath = Get-ChildItem -Path "temp-frontend" -Filter "devtool.frontend.lynx_*.tar.gz" | Select-Object -First 1 -ExpandProperty FullName
-          tar -xzf "$archivePath" -C "packages\devtools-frontend-lynx\output"
-          Write-Host "DevTools Frontend extracted successfully"
+          Move-Item -Path $archivePath -Destination "packages\devtools-frontend-lynx\output" -Force
+          Write-Host "DevTools Frontend archive moved successfully"
 
-      - name: Skip lynx-trace build on Windows
-        run: pnpm run build:lynx-trace
+      - name: Sync DevTools Frontend
+        run: pnpm run sync:devtools-dist
 
       - name: Download lynx-trace prebuilt artifact
         uses: robinraju/release-downloader@v1
@@ -347,7 +347,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Copying prebuilt lynx-trace artifact..." -ForegroundColor Cyan
-          $sourceFile = Get-ChildItem -Path "temp-lynx-trace" -Filter "perfetto-ui-release-*.tar.gz" | Select-Object -First 1
+          $sourceFile = Get-ChildItem -Path "temp-lynx-trace" -Filter "perfetto-ui-*.tar.gz" | Select-Object -First 1
           $destPath = "packages\lynx-devtool-cli\resources\lynx-trace.tar.gz"
           
           if ($sourceFile) {
