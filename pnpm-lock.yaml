@@ -54,6 +54,9 @@ importers:
       glob:
         specifier: ^11.0.1
         version: 11.0.3
+      https-proxy-agent:
+        specifier: 5.0.0
+        version: 5.0.0
       monaco-editor:
         specifier: 0.37.1
         version: 0.37.1
@@ -9502,7 +9505,6 @@ packages:
       debug: 4.3.1
     transitivePeerDependencies:
       - supports-color
-    dev: true
 
   /agent-base@6.0.2(supports-color@5.5.0):
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
@@ -15070,7 +15072,6 @@ packages:
       debug: 4.3.1
     transitivePeerDependencies:
       - supports-color
-    dev: true
 
   /https-proxy-agent@5.0.0(supports-color@5.5.0):
     resolution: {integrity: sha512-EkYm5BcKUGiduxzSt3Eppko+PiNWNEpa4ySk9vTC6wDsQJW9rHSa+UhGNJoRYp7bz6Ht1eaRIa6QaJqO5rCFbA==}
