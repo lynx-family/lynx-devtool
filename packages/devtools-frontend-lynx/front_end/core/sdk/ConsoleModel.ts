@@ -54,7 +54,7 @@ import {Events as RuntimeModelEvents, RuntimeModel} from './RuntimeModel.js';  /
 import type {Target} from './Target.js';
 import {TargetManager} from './TargetManager.js';
 import type {Observer} from './TargetManager.js';
-import * as Acorn from '../../third_party/acorn/acorn.js';
+// Acorn import removed: AST-based identifier rewriting replaced by with()-based scope injection.
 
 const UIStrings = {
   /**
@@ -173,46 +173,81 @@ export class ConsoleModel extends Common.ObjectWrapper.ObjectWrapper implements 
     Common.EventTarget.removeEventListeners(this._targetListeners.get(target) || []);
   }
 
-  _addGlobalPrefix(input: string): string {
-    const ast = Acorn.parse(input, { ecmaVersion: 2022 });
-    // @ts-ignore
-    const ranges = [];
-    // @ts-ignore
-    window.acorn.walk.simple(ast, {
-      // @ts-ignore
-      Identifier: (node) => {
-        if (node.type === 'Identifier') {
-          ranges.push([node.start, node.end]);
-        }
-      }
-    });
-    // @ts-ignore
-    ranges.sort((f, s) => s[0] - f[0]);
-    let result = input;
-    // @ts-ignore
-    ranges.forEach((range) => {
-      result =
-        result.substring(0, range[0]) +
-        '(this.' +
-        result.substring(range[0], range[1]) +
-        ' ?? this.multiApps[this.currentDebugAppId ?? this.currentAppId]?.' +
-        result.substring(range[0], range[1]) +
-        ')' +
-        result.substring(range[1]);
-    });
-    return result;
+  /**
+   * Wraps a console expression so that free-identifier lookups resolve against
+   * the currently-debugged Lynx app's scope.
+   *
+   * Background: in Lynx's shared-context model, multiple LynxViews share a
+   * single JS context (one CDP executionContextId per group).  Per-app globals
+   * such as `lynx`, `params`, and `setTimeout` are NOT true JS globals — they
+   * are properties of the app's `ReactApp` instance stored in
+   * `globalThis.multiApps[appId]`.  Without special handling, typing `lynx` in
+   * the DevTools console would return `undefined`.
+   *
+   * Approach — `with`-based scope injection:
+   *   We wrap the user expression in a singly-invoked `Function` constructor
+   *   call that uses a `with` statement to inject the target app's property
+   *   bag as the innermost scope.  The `Function` constructor creates a fresh
+   *   non-strict scope (allowing `with`), and `eval` inside it inherits that
+   *   same non-strict, `with`-augmented scope.
+   *
+   *   Resulting expression sent to the runtime:
+   *     (new Function('__app__',
+   *       'with(__app__){return eval(__code__)}'
+   *     ))(globalThis.multiApps[globalThis.currentDebugAppId
+   *                             ?? globalThis.currentAppId] ?? {})
+   *
+   * Why this is better than the previous AST-rewrite approach:
+   *   - No AST parsing or text substitution — avoids the "parameter renamed to
+   *     global lookup" class of bugs (e.g. `function test(b){…};test("x")`
+   *     previously printed `b: undefined`).
+   *   - Handles arbitrarily complex JS: destructuring, classes, generators,
+   *     `for…of`, closures, etc. — all work correctly because scope resolution
+   *     is done by the JS engine itself, not by a hand-rolled transformer.
+   *   - True fallthrough: `Math`, `JSON`, `console` and other genuine globals
+   *     are not shadowed — `with` only intercepts names that ARE properties of
+   *     `__app__`.
+   *   - Removes the CDN dependency on `acorn-walk` (`window.acorn.walk`).
+   *   - Still skipped when the debugger is paused (existing guard below), where
+   *     the paused call-frame's scope chain already resolves identifiers
+   *     correctly.
+   *
+   * Limitation: `with` does not affect `let`/`const` lexical declarations
+   *   inside the expression — those are block-scoped to their enclosing block
+   *   and shadow rather than mix with `__app__` properties.  This is the same
+   *   semantics a developer would expect in any JS scope.
+   */
+  _wrapWithAppScope(expression: string): string {
+    // We pass the user expression as a second runtime argument (__code__) to a
+    // Function-constructed helper so that we never need to embed the raw
+    // expression text inside another string literal (avoiding all escaping
+    // concerns).  The helper itself is fixed code that has no variable parts.
+    //
+    // The generated expression sent to the JS runtime looks like:
+    //
+    //   (new Function("__app__", "__code__",
+    //     "with(__app__){return eval(__code__)}"
+    //   ))(
+    //     globalThis.multiApps[globalThis.currentDebugAppId ?? globalThis.currentAppId] ?? {},
+    //     <JSON.stringify(expression)>   // ← the only variable part
+    //   )
+    //
+    // JSON.stringify gives us a valid, properly-escaped JS string literal for
+    // any user input, including inputs that contain quotes, backslashes, or
+    // dollar signs (none of which are special in this concatenation context).
+    const escapedCode = JSON.stringify(expression);
+    return (
+        '(new Function("__app__", "__code__",' +
+        ' "with(__app__){return eval(__code__)}")' +
+        ')(globalThis.multiApps[globalThis.currentDebugAppId ?? globalThis.currentAppId] ?? {},' +
+        ' ' + escapedCode + ')');
   }
 
   async evaluateCommandInConsole(
       executionContext: ExecutionContext, originatingMessage: ConsoleMessage, expression: string,
       useCommandLineAPI: boolean): Promise<void> {
     if (!executionContext.debuggerModel.isPaused()) {
-      try {
-        const newExpression = this._addGlobalPrefix(expression);
-        expression = newExpression;
-      } catch (error) {
-        // not processed here, the error message will be displayed when evaluate returns result
-      }
+      expression = this._wrapWithAppScope(expression);
     }
     const result = await executionContext.evaluate(
         {
