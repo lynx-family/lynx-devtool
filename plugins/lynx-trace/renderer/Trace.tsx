@@ -234,6 +234,7 @@ const TraceView: React.FC<ILynxTraceProps> = (props: ILynxTraceProps) => {
   } = useTrace();
 
   const deviceMapRef = useRef(deviceMap);
+  const originalDomTreeStateRef = useRef(true);
 
   useEffect(() => {
     deviceMapRef.current = deviceMap;
@@ -472,10 +473,16 @@ const TraceView: React.FC<ILynxTraceProps> = (props: ILynxTraceProps) => {
         JSProfileInterval: enableJSProfiler ? 100 : 0,
         JSProfileType: jsProfileType === 'primjs' ? 'quickjs' : jsProfileType,
       };
-      if (props.info.osType === 'Android') {
-        await switchUtils.openDevtool(debugDriver, false);
+
+      if (start) {
+        // Record domtree status when press start trace
+        try {
+          originalDomTreeStateRef.current = await switchUtils.getGlobalSwitch(debugDriver, { global_key: 'enable_dom_tree' });
+        } catch (error) {
+          console.warn('Failed to get original domTree state:', error);
+        }
+        await switchUtils.openDomTree(debugDriver, false);
       }
-      await switchUtils.openDomTree(debugDriver, false);
 
       const method = start
         ? TracingMethodStart
@@ -519,6 +526,18 @@ const TraceView: React.FC<ILynxTraceProps> = (props: ILynxTraceProps) => {
       }
     } catch (e) {
       showTimeoutError();
+    } finally {
+      console.log('onTraceAction finally, start:', start);
+      if (!start) {
+        try {
+          let currentDomTreeState = await switchUtils.getGlobalSwitch(debugDriver, { global_key: 'enable_dom_tree' });
+          if (currentDomTreeState !== originalDomTreeStateRef.current) {
+            await switchUtils.setGlobalSwitch(debugDriver, { global_key: 'enable_dom_tree', global_value: originalDomTreeStateRef.current });
+          }
+        } catch (error) {
+          console.warn('Failed to restore domTree state after trace end:', error);
+        }
+      }
     }
   };
 
@@ -536,7 +555,7 @@ const TraceView: React.FC<ILynxTraceProps> = (props: ILynxTraceProps) => {
     }
 
     const cat_options: any[] = [];
-    ["all", "lynx", "vitals", "javascript", "jsb"].forEach((cat) => {
+    ["all", "lynx", "vitals", "javascript", "jsb", "devtool"].forEach((cat) => {
       cat_options.push({
         value: cat,
         label: cat,
