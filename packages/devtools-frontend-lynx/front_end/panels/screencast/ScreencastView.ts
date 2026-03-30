@@ -715,9 +715,8 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
     UI.ARIAUtils.setAccessibleName(this._navigationForward, i18nString(UIStrings.forward));
     this._navigationReload = this._navigationBar.createChild('button', 'reload');
     UI.ARIAUtils.setAccessibleName(this._navigationReload, i18nString(UIStrings.reload));
-    let reloadText = this._navigationBar.createChild('span', 'title-heigh');
-    let tmp0 = document.createTextNode('Reload');
-    reloadText.appendChild(tmp0);
+    const reloadText = this._navigationReload.createChild('span', 'reload-label');
+    reloadText.appendChild(document.createTextNode('Reload'));
 
     const spanValue = this._navigationBar.createChild('span', 'title-heigh');
     spanValue.appendChild(document.createTextNode('SD'));
