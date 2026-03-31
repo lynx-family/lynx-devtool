@@ -82,11 +82,19 @@ pnpm install
 pnpm run build:devtools-frontend-lynx
 ```
 
-4. Sync Lynx Trace dependencies and build it:
+4. Lynx Trace
 
-```bash
-pnpm run build:lynx-trace
-```
+      (Linux/MacOS) Sync Lynx Trace dependencies and build it:
+
+      ```bash
+      pnpm run build:lynx-trace
+      ```
+
+      (Windows) Download pre-built lynx-trace:
+
+      ```cmd
+      pnpm run download:lynx-trace
+      ```
 
 5. Start development environment:
 
