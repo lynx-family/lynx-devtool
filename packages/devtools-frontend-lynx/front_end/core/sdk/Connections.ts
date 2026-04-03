@@ -290,6 +290,11 @@ export class LynxConnection implements ProtocolClient.InspectorBackend.Connectio
             },
           });
           break;
+        case 'codex_companion_mode':
+          if (content?.visible && typeof content?.focusPanelId === 'string' && content.focusPanelId) {
+            (window as any).DevToolsAPI?.showPanel(content.focusPanelId);
+          }
+          break;
         // all messages from devtool server
         case 'lynx_message':
           // After receiving all types of messages, the web sends devtoolStats messages to the iframe, and no longer sends them repeatedly in pluginLoader

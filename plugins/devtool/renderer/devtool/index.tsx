@@ -73,12 +73,17 @@ export interface IDevToolProps {
   inspectorUrl?: string;
   // TODO: type def use common packages
   plugins?: Record<string, any>[];
+  companionMode?: {
+    visible: boolean;
+    focusPanelId?: string;
+  };
 }
 
 export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
   const iframeElement = useRef<any>();
   const iframeOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
   const mainWindowOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
+  const companionModeRef = useRef(props.companionMode);
   const { debugDriver, switchView } = useContext(GlobalContext);
   const { sessionId, clientId, inspectorUrl, inspectorType, info, showPanels, plugins } = props;
 
@@ -89,6 +94,12 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
     }
     targetWindow.postMessage({ type, content }, '*');
   }, []);
+  const syncCompanionMode = useCallback(() => {
+    sendGenericMessageToIframe('codex_companion_mode', {
+      visible: Boolean(companionModeRef.current?.visible),
+      focusPanelId: companionModeRef.current?.focusPanelId ?? 'uitree-drawer'
+    });
+  }, [sendGenericMessageToIframe]);
   const sendMessageToIframe = (message: ICustomDataWrapper<ECustomDataType.CDP>) => {
     const targetWindow = iframeElement.current?.contentWindow;
     if (!targetWindow) {
@@ -171,6 +182,7 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
         case 'iframe_loaded':
           console.log('iframe loaded', event);
           lynxOpen();
+          syncCompanionMode();
           break;
         // Call lynx communication interface to forward messages
         case 'send_message':
@@ -292,6 +304,11 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
       window.ldtElectronAPI?.off('inspect-devtool-message', onInspectMessage);
     };
   }, [clientId, dispatchCodexContext, sessionId, inspectorType, inspectorUrl]);
+
+  useEffect(() => {
+    companionModeRef.current = props.companionMode;
+    syncCompanionMode();
+  }, [props.companionMode, syncCompanionMode]);
 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
