@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 import * as Host from '../../core/host/host.js';
-import * as Protocol from '../../generated/protocol.js';
 import * as SDK from '../../core/sdk/sdk.js';
 import * as UI from '../../ui/legacy/legacy.js';
 import * as DOMPath from '../../panels/elements/DOMPath.js';
@@ -12,6 +11,7 @@ import {getMessageForElement} from '../../panels/console/ConsoleViewMessage.js';
 
 const BUTTON_CLASS_NAME = 'lynx-codex-context-button';
 const BUTTON_STYLE_ID = 'lynx-codex-context-button-style';
+const ELEMENT_ANCHOR_EVENT_NAME = 'lynx-codex-element-anchor';
 
 type CodexContextKind = 'console'|'element';
 
@@ -25,6 +25,29 @@ type CodexContext = {
 };
 
 let codexContextButtonControllerInstance: CodexContextButtonController|null = null;
+
+type ConsoleMessageDetails = {
+  fullMessage: string;
+  level: string;
+  source: string;
+  type: string;
+  location: string;
+  topFrameText: string;
+};
+
+type ElementTreeClickAnchor = {
+  clientX: number;
+  clientY: number;
+  offsetX: number;
+  offsetY: number;
+  relativeToTreeItem: boolean;
+};
+
+type ScreencastClickAnchor = {
+  clientX: number;
+  clientY: number;
+  nodeId: number;
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -44,16 +67,68 @@ function getCurrentPanelName(): string {
   return currentPanel?.name ?? '';
 }
 
-function findClosestElement(node: Node|null, selector: string): Element|null {
-  if (node instanceof Element) {
-    return node.closest(selector);
+function getParentNodeOrShadowHost(node: Node): Node|null {
+  if (node.parentNode) {
+    return node.parentNode;
   }
 
-  if (node instanceof Text) {
-    return node.parentElement?.closest(selector) ?? null;
+  const rootNode = node.getRootNode();
+  return rootNode instanceof ShadowRoot ? rootNode.host : null;
+}
+
+function findClosestElement(node: Node|null, selector: string): Element|null {
+  for (let currentNode = node; currentNode; currentNode = getParentNodeOrShadowHost(currentNode)) {
+    if (currentNode instanceof Element && currentNode.matches(selector)) {
+      return currentNode;
+    }
   }
 
   return null;
+}
+
+function findClosestElementInEvent(event: Event, selector: string): Element|null {
+  const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  for (const item of eventPath) {
+    if (item instanceof Node) {
+      const matchedElement = findClosestElement(item, selector);
+      if (matchedElement) {
+        return matchedElement;
+      }
+    }
+  }
+
+  return findClosestElement(event.target instanceof Node ? event.target : null, selector);
+}
+
+function deepQuerySelector(root: ParentNode, selector: string): Element|null {
+  const directMatch = root.querySelector(selector);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const elements = root.querySelectorAll('*');
+  for (const element of elements) {
+    if (element.shadowRoot) {
+      const shadowMatch = deepQuerySelector(element.shadowRoot, selector);
+      if (shadowMatch) {
+        return shadowMatch;
+      }
+    }
+  }
+
+  return null;
+}
+
+function deepElementFromPoint(root: Document|ShadowRoot, x: number, y: number): Element|null {
+  const element = ((root as unknown) as {
+    elementFromPoint?: (left: number, top: number) => Element|null,
+  }).elementFromPoint?.(x, y) ?? null;
+  if (element?.shadowRoot) {
+    const shadowElement = deepElementFromPoint(element.shadowRoot, x, y);
+    return shadowElement ?? element;
+  }
+
+  return element;
 }
 
 function buildAttributeSummary(node: SDK.DOMModel.DOMNode): string {
@@ -70,6 +145,89 @@ function buildAttributeSummary(node: SDK.DOMModel.DOMNode): string {
       500);
 }
 
+function sanitizeConsoleText(text: string): string {
+  return text.replace(/\u200B/g, '').trim();
+}
+
+function inferConsoleLevelFromElement(element: Element): string {
+  if (element.classList.contains('console-error-level')) {
+    return 'error';
+  }
+
+  if (element.classList.contains('console-warning-level')) {
+    return 'warning';
+  }
+
+  if (element.classList.contains('console-info-level')) {
+    return 'info';
+  }
+
+  if (element.classList.contains('console-verbose-level')) {
+    return 'verbose';
+  }
+
+  return 'unknown';
+}
+
+function inferConsoleSourceFromElement(element: Element): string {
+  if (element.classList.contains('console-from-api')) {
+    return 'console-api';
+  }
+
+  return 'unknown';
+}
+
+function extractConsoleLocationFromElement(element: Element): string {
+  const linkElement = element.querySelector('.console-message-anchor .devtools-link, .console-message-anchor');
+  if (!(linkElement instanceof HTMLElement)) {
+    return '';
+  }
+
+  return sanitizeConsoleText(linkElement.innerText || linkElement.textContent || '');
+}
+
+function extractConsoleMessageDetails(element: Element): ConsoleMessageDetails|null {
+  const consoleViewMessage = getMessageForElement(element);
+  const consoleMessage = consoleViewMessage?.consoleMessage();
+  if (consoleViewMessage && consoleMessage) {
+    const topFrame = consoleMessage.stackTrace?.callFrames?.[0];
+    const location =
+        formatLocation(consoleMessage.url, consoleMessage.line, consoleMessage.column) ||
+        formatLocation(topFrame?.url, topFrame?.lineNumber, topFrame?.columnNumber);
+    const topFrameText =
+        topFrame?.url ?
+        `${topFrame.functionName || '<anonymous>'} @ ${
+            formatLocation(topFrame.url, topFrame.lineNumber, topFrame.columnNumber)
+        }` :
+        '';
+
+    return {
+      fullMessage:
+          sanitizeConsoleText(consoleViewMessage.contentElement().deepTextContent()) ||
+          sanitizeConsoleText(consoleMessage.messageText),
+      level: consoleMessage.level ?? 'unknown',
+      source: consoleMessage.source ?? 'unknown',
+      type: consoleMessage.type ?? 'unknown',
+      location,
+      topFrameText
+    };
+  }
+
+  const fullMessage = sanitizeConsoleText((element as HTMLElement).innerText || element.textContent || '');
+  if (!fullMessage) {
+    return null;
+  }
+
+  return {
+    fullMessage,
+    level: inferConsoleLevelFromElement(element),
+    source: inferConsoleSourceFromElement(element),
+    type: 'log',
+    location: extractConsoleLocationFromElement(element),
+    topFrameText: ''
+  };
+}
+
 function formatLocation(url?: string, line?: number, column?: number): string {
   if (!url) {
     return '';
@@ -84,6 +242,10 @@ function formatLocation(url?: string, line?: number, column?: number): string {
   return `${url}:${nextLine}:${nextColumn}`;
 }
 
+function createPointRect(x: number, y: number): DOMRect {
+  return new DOMRect(x, y, 0, 0);
+}
+
 export class CodexContextButtonController {
   private readonly button: HTMLButtonElement;
   private elementContext: CodexContext|null = null;
@@ -91,6 +253,8 @@ export class CodexContextButtonController {
   private currentContext: CodexContext|null = null;
   private hoveredConsoleMessageElement: Element|null = null;
   private activeConsoleMessageElement: Element|null = null;
+  private elementTreeClickAnchor: ElementTreeClickAnchor|null = null;
+  private screencastClickAnchor: ScreencastClickAnchor|null = null;
   private buttonHovered = false;
   private latestElementRequestId = 0;
 
@@ -198,6 +362,7 @@ export class CodexContextButtonController {
     document.addEventListener('mouseup', this.handleSelectionChange, true);
     document.addEventListener('keyup', this.handleSelectionChange, true);
     document.addEventListener('click', this.handleDocumentClick, true);
+    window.addEventListener(ELEMENT_ANCHOR_EVENT_NAME, this.handleScreencastElementAnchor as EventListener, true);
     window.addEventListener('resize', this.updateButtonPosition, true);
     document.addEventListener('scroll', this.updateButtonPosition, true);
   }
@@ -217,25 +382,50 @@ export class CodexContextButtonController {
         source: this.currentContext.source
       }
     });
+    this.clearElementAnchors();
+    this.buttonHovered = false;
+    this.consoleContext = null;
+    this.activeConsoleMessageElement = null;
+    this.hoveredConsoleMessageElement = null;
+    this.currentContext = null;
+    this.button.dataset.hidden = 'true';
   };
 
   private readonly handleSelectedNodeChanged = (): void => {
     this.consoleContext = null;
     this.hoveredConsoleMessageElement = null;
     this.activeConsoleMessageElement = null;
+    const selectedNode = UI.Context.Context.instance().flavor(SDK.DOMModel.DOMNode)?.enclosingElementOrSelf();
+    if (selectedNode && this.screencastClickAnchor && selectedNode.id !== this.screencastClickAnchor.nodeId) {
+      this.screencastClickAnchor = null;
+    }
     this.applyVisibleContext();
     void this.refreshElementContext();
   };
 
+  private readonly handleScreencastElementAnchor = (event: Event): void => {
+    const customEvent = event as CustomEvent<ScreencastClickAnchor|undefined>;
+    const detail = customEvent.detail;
+    if (!detail || typeof detail.clientX !== 'number' || typeof detail.clientY !== 'number' ||
+        typeof detail.nodeId !== 'number') {
+      return;
+    }
+
+    this.elementTreeClickAnchor = null;
+    this.screencastClickAnchor = detail;
+    this.applyVisibleContext();
+    this.scheduleButtonReposition();
+  };
+
   private readonly handlePointerMove = (event: Event): void => {
+    const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
     const target = event.target instanceof Node ? event.target : null;
-    if (target && this.button.contains(target)) {
+    if (eventPath.includes(this.button) || (target && this.button.contains(target))) {
       return;
     }
 
     const panelName = getCurrentPanelName();
-    const hoveredConsoleCandidate =
-        panelName === 'console' ? findClosestElement(target, '.console-message-wrapper') : null;
+    const hoveredConsoleCandidate = findClosestElementInEvent(event, '.console-message-wrapper');
     const nextConsoleMessageElement =
         hoveredConsoleCandidate && this.isEligibleConsoleMessage(hoveredConsoleCandidate) ? hoveredConsoleCandidate : null;
     const shouldRefreshConsole =
@@ -270,8 +460,20 @@ export class CodexContextButtonController {
   };
 
   private readonly handleDocumentClick = (event: Event): void => {
-    const target = event.target instanceof Node ? event.target : null;
-    const clickedConsoleMessageElement = findClosestElement(target, '.console-message-wrapper');
+    const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    if (eventPath.includes(this.button)) {
+      return;
+    }
+
+    const clickedTreeItem = this.updateElementTreeClickAnchor(event);
+    const clickedScreencastElement = findClosestElementInEvent(
+        event, '.screencast canvas, .screencast-viewport, .screencast-canvas-container, .screencast-element-title');
+    const clickedConsoleMessageElement = findClosestElementInEvent(event, '.console-message-wrapper');
+    if (clickedTreeItem) {
+      this.screencastClickAnchor = null;
+    } else if (!clickedScreencastElement) {
+      this.clearElementAnchors();
+    }
 
     this.activeConsoleMessageElement =
         clickedConsoleMessageElement && this.isEligibleConsoleMessage(clickedConsoleMessageElement) ?
@@ -283,7 +485,9 @@ export class CodexContextButtonController {
         null;
 
     this.refreshConsoleContext();
+    this.applyVisibleContext();
     void this.refreshElementContext();
+    this.scheduleButtonReposition();
   };
 
   private readonly updateButtonPosition = (): void => {
@@ -359,13 +563,75 @@ export class CodexContextButtonController {
       source: 'elements-selection',
       text: lines.join('\n'),
       title: 'Fill the Codex input with the selected element context',
-      getAnchorRect: () => {
-        const anchorElement = document.querySelector(
-            '.elements-tree-outline li.selected .selection, .elements-tree-outline li.selected') as HTMLElement|null;
-        return anchorElement?.getBoundingClientRect() ?? null;
-      }
+      getAnchorRect: () => this.getElementAnchorRect()
     };
     this.applyVisibleContext();
+  }
+
+  private updateElementTreeClickAnchor(event: Event): Element|null {
+    if (!(event instanceof MouseEvent)) {
+      return null;
+    }
+
+    const clickedTreeItem = findClosestElementInEvent(event, '.elements-tree-outline li') ??
+        findClosestElement(deepElementFromPoint(document, event.clientX, event.clientY), '.elements-tree-outline li');
+    if (clickedTreeItem) {
+      const treeItemRect = clickedTreeItem.getBoundingClientRect();
+      this.elementTreeClickAnchor = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        offsetX: clamp(event.clientX - treeItemRect.left, 0, treeItemRect.width),
+        offsetY: clamp(event.clientY - treeItemRect.top, 0, treeItemRect.height),
+        relativeToTreeItem: true
+      };
+      return clickedTreeItem;
+    }
+
+    return null;
+  }
+
+  private clearElementAnchors(): void {
+    this.elementTreeClickAnchor = null;
+    this.screencastClickAnchor = null;
+  }
+
+  private hasElementAnchor(): boolean {
+    return Boolean(this.screencastClickAnchor || this.elementTreeClickAnchor);
+  }
+
+  private getElementAnchorRect(): DOMRect|null {
+    const selectedNode = UI.Context.Context.instance().flavor(SDK.DOMModel.DOMNode)?.enclosingElementOrSelf();
+    if (selectedNode && this.screencastClickAnchor && selectedNode.id === this.screencastClickAnchor.nodeId) {
+      return createPointRect(this.screencastClickAnchor.clientX, this.screencastClickAnchor.clientY);
+    }
+
+    return this.getElementTreeAnchorRect();
+  }
+
+  private getElementTreeAnchorRect(): DOMRect|null {
+    const selectedTreeItem = deepQuerySelector(document, '.elements-tree-outline li.selected') as HTMLElement|null;
+    const anchor = this.elementTreeClickAnchor;
+    if (anchor?.relativeToTreeItem && selectedTreeItem) {
+      const treeItemRect = selectedTreeItem.getBoundingClientRect();
+      return createPointRect(
+          treeItemRect.left + clamp(anchor.offsetX, 0, treeItemRect.width),
+          treeItemRect.top + clamp(anchor.offsetY, 0, treeItemRect.height));
+    }
+
+    if (anchor) {
+      return createPointRect(anchor.clientX, anchor.clientY);
+    }
+
+    const anchorElement = deepQuerySelector(
+        document,
+        '.elements-tree-outline li.selected .selection, .elements-tree-outline li.selected') as HTMLElement|null;
+    return anchorElement?.getBoundingClientRect() ?? null;
+  }
+
+  private scheduleButtonReposition(): void {
+    queueMicrotask(this.updateButtonPosition);
+    window.requestAnimationFrame(this.updateButtonPosition);
+    window.setTimeout(this.updateButtonPosition, 80);
   }
 
   private refreshConsoleContext(): void {
@@ -388,47 +654,37 @@ export class CodexContextButtonController {
       return;
     }
 
-    const consoleViewMessage = getMessageForElement(targetWrapper);
-    const consoleMessage = consoleViewMessage?.consoleMessage();
-    if (!consoleViewMessage || !consoleMessage) {
+    const consoleDetails = extractConsoleMessageDetails(targetWrapper);
+    if (!consoleDetails) {
       this.consoleContext = null;
       this.applyVisibleContext();
       return;
     }
 
-    const fullMessage = consoleViewMessage.contentElement().deepTextContent().trim() || consoleMessage.messageText.trim();
     const selectedSnippet =
         selectionWrapper === targetWrapper && selectedText.length > 0 ? truncate(selectedText, 600) : '';
-    const topFrame = consoleMessage.stackTrace?.callFrames?.[0];
-    const location =
-        formatLocation(consoleMessage.url, consoleMessage.line, consoleMessage.column) ||
-        formatLocation(topFrame?.url, topFrame?.lineNumber, topFrame?.columnNumber);
 
     const lines = [
       'Console panel context',
       '',
       'Selected message:',
-      `- level: ${consoleMessage.level ?? 'unknown'}`,
-      `- source: ${consoleMessage.source ?? 'unknown'}`,
-      `- type: ${consoleMessage.type ?? 'unknown'}`
+      `- level: ${consoleDetails.level}`,
+      `- source: ${consoleDetails.source}`,
+      `- type: ${consoleDetails.type}`
     ];
 
-    if (location) {
-      lines.push(`- location: ${location}`);
+    if (consoleDetails.location) {
+      lines.push(`- location: ${consoleDetails.location}`);
     }
 
     if (selectedSnippet) {
       lines.push('', 'Selected text:', '```text', selectedSnippet, '```');
     }
 
-    lines.push('', 'Message text:', '```text', truncate(fullMessage, 1600), '```');
+    lines.push('', 'Message text:', '```text', truncate(consoleDetails.fullMessage, 1600), '```');
 
-    if (topFrame?.url) {
-      lines.push(
-          '',
-          `Top stack frame: ${topFrame.functionName || '<anonymous>'} @ ${
-              formatLocation(topFrame.url, topFrame.lineNumber, topFrame.columnNumber)
-          }`);
+    if (consoleDetails.topFrameText) {
+      lines.push('', `Top stack frame: ${consoleDetails.topFrameText}`);
     }
 
     this.consoleContext = {
@@ -451,9 +707,7 @@ export class CodexContextButtonController {
   }
 
   private isEligibleConsoleMessage(element: Element): boolean {
-    return element.classList.contains('console-error-level') ||
-        element.classList.contains('console-warning-level') ||
-        getMessageForElement(element)?.consoleMessage().level === Protocol.Log.LogEntryLevel.Error;
+    return Boolean(extractConsoleMessageDetails(element)?.fullMessage);
   }
 
   private isConsoleSelectionActive(): boolean {
@@ -473,11 +727,9 @@ export class CodexContextButtonController {
     let nextContext: CodexContext|null = null;
     if (this.consoleContext && this.isConsoleSelectionActive()) {
       nextContext = this.consoleContext;
-    } else if (
-        panelName === 'console' && this.consoleContext &&
-        (this.activeConsoleMessageElement || this.hoveredConsoleMessageElement)) {
+    } else if (this.consoleContext && (this.activeConsoleMessageElement || this.hoveredConsoleMessageElement)) {
       nextContext = this.consoleContext;
-    } else if (panelName === 'elements' && this.elementContext) {
+    } else if (panelName === 'elements' && this.elementContext && this.hasElementAnchor()) {
       nextContext = this.elementContext;
     } else if (this.buttonHovered) {
       nextContext = this.currentContext;
