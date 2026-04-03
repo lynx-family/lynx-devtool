@@ -5,7 +5,12 @@
 import React, { useState } from 'react';
 import { Modal, Button, Tag, Space, Typography } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { ExecDetails, PatchDetails, PendingApproval } from '../types/protocol';
+import {
+  ExecDetails,
+  McpApprovalDetails,
+  PendingApproval,
+  PatchDetails
+} from '../types/protocol';
 import { DiffViewer } from './DiffViewer';
 
 const { Text, Paragraph } = Typography;
@@ -123,15 +128,143 @@ function ExecApprovalContent({ details }: { details: ExecDetails }) {
   );
 }
 
+function formatApprovalValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (_) {
+    return String(value);
+  }
+}
+
+function McpApprovalContent({ details }: { details: McpApprovalDetails }) {
+  const displayParams = details.toolParamsDisplay ?? [];
+  const hasStructuredParams = displayParams.length > 0;
+  const requestedSchemaText =
+    details.mode === 'form' && details.requestedSchema
+      ? formatApprovalValue(details.requestedSchema)
+      : null;
+
+  return (
+    <div>
+      {details.message && (
+        <Paragraph style={{ marginBottom: 12 }}>
+          <Text type="secondary">{details.message}</Text>
+        </Paragraph>
+      )}
+      <Space size={[8, 8]} wrap style={{ marginBottom: 12 }}>
+        {details.serverName && <Tag color="blue">{details.serverName}</Tag>}
+        {details.approvalKind && <Tag>{details.approvalKind}</Tag>}
+        {details.mode && <Tag>{details.mode}</Tag>}
+      </Space>
+      {details.toolTitle && (
+        <div style={{ marginBottom: 8 }}>
+          <Text strong>Tool:</Text>{' '}
+          <Text>{details.toolTitle}</Text>
+        </div>
+      )}
+      {details.toolDescription && (
+        <Paragraph style={{ marginBottom: 12 }}>
+          <Text type="secondary">{details.toolDescription}</Text>
+        </Paragraph>
+      )}
+      {hasStructuredParams && (
+        <div style={{ marginBottom: 12 }}>
+          <Text strong>Parameters:</Text>
+          <div style={{ marginTop: 6 }}>
+            {displayParams.map((param) => (
+              <div key={param.name} style={{ marginBottom: 10 }}>
+                <Text strong>{param.displayName ?? param.name}</Text>
+                <pre
+                  style={{
+                    marginTop: 6,
+                    marginBottom: 0,
+                    padding: '8px 12px',
+                    background: '#1e1e1e',
+                    color: '#d4d4d4',
+                    borderRadius: 4,
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all'
+                  }}
+                >
+                  {formatApprovalValue(param.value)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!hasStructuredParams && details.toolParams !== undefined && (
+        <div style={{ marginBottom: 12 }}>
+          <Text strong>Parameters:</Text>
+          <pre
+            style={{
+              marginTop: 6,
+              marginBottom: 0,
+              padding: '8px 12px',
+              background: '#1e1e1e',
+              color: '#d4d4d4',
+              borderRadius: 4,
+              fontFamily: 'monospace',
+              fontSize: 12,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all'
+            }}
+          >
+            {formatApprovalValue(details.toolParams)}
+          </pre>
+        </div>
+      )}
+      {details.url && (
+        <div style={{ marginBottom: 12 }}>
+          <Text strong>Approval URL: </Text>
+          <Text copyable style={{ fontFamily: 'monospace', fontSize: 12 }}>
+            {details.url}
+          </Text>
+        </div>
+      )}
+      {requestedSchemaText && requestedSchemaText !== '{}' && (
+        <div>
+          <Text strong>Requested schema:</Text>
+          <pre
+            style={{
+              marginTop: 6,
+              marginBottom: 0,
+              padding: '8px 12px',
+              background: '#fafafa',
+              color: '#595959',
+              borderRadius: 4,
+              fontFamily: 'monospace',
+              fontSize: 12,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all'
+            }}
+          >
+            {requestedSchemaText}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ApprovalDialog({ approval, onApprove, onDeny }: ApprovalDialogProps) {
   const [showDiff, setShowDiff] = useState(false);
 
   if (!approval) return null;
 
   const isPatch = approval.type === 'patch';
-  const title = isPatch ? 'Apply File Changes?' : 'Run Command?';
+  const isExec = approval.type === 'exec';
+  const isMcp = approval.type === 'mcp';
+  const title = isPatch ? 'Apply File Changes?' : isExec ? 'Run Command?' : 'Allow MCP Tool?';
   const patchDetails = isPatch ? (approval.details as PatchDetails) : null;
-  const execDetails = !isPatch ? (approval.details as ExecDetails) : null;
+  const execDetails = isExec ? (approval.details as ExecDetails) : null;
+  const mcpDetails = isMcp ? (approval.details as McpApprovalDetails) : null;
+  const approveLabel = isPatch ? 'Apply' : 'Allow';
 
   return (
     <>
@@ -150,11 +283,11 @@ export function ApprovalDialog({ approval, onApprove, onDeny }: ApprovalDialogPr
               Deny
             </Button>
             <Button type="primary" onClick={onApprove}>
-              {isPatch ? 'Apply' : 'Allow'}
+              {approveLabel}
             </Button>
           </Space>
         }
-        width={520}
+        width={560}
       >
         {isPatch && patchDetails && (
           <PatchApprovalContent
@@ -162,7 +295,8 @@ export function ApprovalDialog({ approval, onApprove, onDeny }: ApprovalDialogPr
             onViewDiff={() => setShowDiff(true)}
           />
         )}
-        {!isPatch && execDetails && <ExecApprovalContent details={execDetails} />}
+        {isExec && execDetails && <ExecApprovalContent details={execDetails} />}
+        {isMcp && mcpDetails && <McpApprovalContent details={mcpDetails} />}
       </Modal>
 
       {isPatch && patchDetails && showDiff && (

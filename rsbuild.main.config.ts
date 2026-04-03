@@ -10,7 +10,8 @@ export default defineConfig({
   source: {
     entry: {
       index: './src/main/index.ts',
-      preload: './preload.js'
+      preload: './preload.js',
+      'codex-cdp-mcp-server': './plugins/codex-agent/runtime/cdp-mcp-server.ts'
     },
     alias: {
       '@': './src'

@@ -22,14 +22,35 @@ import {
   WarningOutlined,
   PlusCircleOutlined,
 } from '@ant-design/icons';
-import { RendererContext } from '@lynx-js/devtool-plugin-core/renderer';
+import {
+  IDevice,
+  IDeviceInfo,
+  ISessionInfo,
+  RendererContext
+} from '@lynx-js/devtool-plugin-core/renderer';
 import { ERemoteDebugDriverExternalEvent } from '@lynx-js/remote-debug-driver';
 import { AsyncBridgeType } from '../bridge';
 import { useCodexClient } from './hooks/useCodexClient';
 import { MessageList } from './components/MessageList';
 import { ApprovalDialog } from './components/ApprovalDialog';
 import { ConversationSidebar } from './components/ConversationSidebar';
-import { ApprovalPolicy, ChatEntry, ConnectionStatus, ConversationHistoryItem } from './types/protocol';
+import {
+  ApprovalPolicy,
+  ChatEntry,
+  CodexDebugEntry,
+  CodexDebugEvent,
+  ConnectionStatus,
+  ConversationHistoryItem
+} from './types/protocol';
+import {
+  CDP_PROXY_EVENT_NAME,
+  CdpActiveTargetResult,
+  CdpListSessionsResult,
+  CdpProxyRequest,
+  CdpProxyResponse,
+  CdpSendMessageResult,
+  CdpSessionDescriptor
+} from '../shared/cdp';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -38,6 +59,8 @@ const CODEX_CONTEXT_EVENT_NAME = 'lynx-devtool:codex-context';
 const CODEX_PROJECT_PATH_STORAGE_KEY = 'lynx-devtool:codex-project-path';
 const CODEX_APPROVAL_POLICY_STORAGE_KEY = 'lynx-devtool:codex-approval-policy';
 const CODEX_CONVERSATION_HISTORY_STORAGE_KEY = 'lynx-devtool:codex-conversation-history';
+const CODEX_DEBUG_MODE_STORAGE_KEY = 'lynx-devtool:codex-debug-mode';
+const MAX_DEBUG_ENTRIES = 200;
 const MAX_CONVERSATION_HISTORY_ITEMS = 20;
 
 type CodexContextPayload = {
@@ -264,6 +287,155 @@ function composeOutgoingPrompt(attachments: CodexContextAttachment[], userInput:
   return sections.join('\n\n');
 }
 
+function stringifyDebugPayload(payload?: unknown): string {
+  if (payload === undefined) {
+    return '';
+  }
+
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch (_) {
+    return String(payload);
+  }
+}
+
+function formatDebugEntryLine(entry: CodexDebugEntry): string {
+  return JSON.stringify({
+    timestamp: new Date(entry.timestamp).toISOString(),
+    source: entry.source,
+    action: entry.action,
+    level: entry.level ?? 'info',
+    message: entry.message ?? null,
+    payload: entry.payload ?? null
+  });
+}
+
+type ConnectionSnapshot = {
+  selectedDevice: IDevice;
+  deviceInfoMap: Record<number, IDeviceInfo>;
+  deviceList: IDevice[];
+};
+
+function serializeDevice(device?: IDevice): CdpSessionDescriptor['device'] {
+  return {
+    appId: device?.info?.appId,
+    appName: device?.info?.App,
+    appVersion: device?.info?.AppVersion,
+    debugRouterId: device?.info?.debugRouterId,
+    deviceModel: device?.info?.deviceModel,
+    network: device?.info?.network,
+    osType: device?.info?.osType,
+    osVersion: device?.info?.osVersion,
+    sdkVersion: device?.info?.sdkVersion
+  };
+}
+
+function buildSessionDescriptor(
+  device: IDevice | undefined,
+  deviceInfo: IDeviceInfo | undefined,
+  session: ISessionInfo,
+  selectedClientId: number | null,
+  selectedSessionId: number | null
+): CdpSessionDescriptor {
+  return {
+    clientId: device?.clientId ?? -1,
+    sessionId: session.session_id,
+    targetKind: 'lynx-runtime',
+    sessionType: session.type,
+    url: session.url,
+    engineType: session.engineType,
+    targetIds: session.targets ? Array.from(session.targets) : undefined,
+    selected:
+      (device?.clientId ?? null) === selectedClientId && session.session_id === selectedSessionId,
+    device: serializeDevice(device)
+  };
+}
+
+function listAllSessions(
+  snapshot: ConnectionSnapshot,
+  filterClientId?: number
+): CdpListSessionsResult {
+  const selectedClientId = snapshot.selectedDevice.clientId ?? null;
+  const selectedSessionId =
+    selectedClientId !== null
+      ? snapshot.deviceInfoMap[selectedClientId]?.selectedSession?.session_id ?? null
+      : null;
+
+  const sessions = snapshot.deviceList.flatMap((device) => {
+    const clientId = device.clientId;
+    if (!clientId || (filterClientId !== undefined && clientId !== filterClientId)) {
+      return [];
+    }
+    const deviceInfo = snapshot.deviceInfoMap[clientId];
+    return (deviceInfo?.sessions ?? []).map((session) =>
+      buildSessionDescriptor(device, deviceInfo, session, selectedClientId, selectedSessionId)
+    );
+  });
+
+  sessions.sort((left, right) => {
+    if (left.selected !== right.selected) {
+      return left.selected ? -1 : 1;
+    }
+    if (left.clientId !== right.clientId) {
+      return left.clientId - right.clientId;
+    }
+    return right.sessionId - left.sessionId;
+  });
+
+  return {
+    sessions,
+    selectedClientId,
+    selectedSessionId
+  };
+}
+
+function getActiveTarget(snapshot: ConnectionSnapshot): CdpActiveTargetResult {
+  const listing = listAllSessions(snapshot);
+  const activeSession = listing.sessions.find((session) => session.selected) ?? null;
+  return {
+    selectedClientId: listing.selectedClientId,
+    selectedSessionId: listing.selectedSessionId,
+    session: activeSession
+  };
+}
+
+function resolveTargetSession(
+  snapshot: ConnectionSnapshot,
+  clientId?: number,
+  sessionId?: number
+): {
+  clientId: number;
+  sessionId: number;
+} | null {
+  const resolvedClientId = clientId ?? snapshot.selectedDevice.clientId;
+  if (!resolvedClientId) {
+    return null;
+  }
+
+  const deviceInfo = snapshot.deviceInfoMap[resolvedClientId];
+  const resolvedSessionId = sessionId ?? deviceInfo?.selectedSession?.session_id;
+  if (!resolvedSessionId) {
+    return null;
+  }
+
+  const hasSession = (deviceInfo?.sessions ?? []).some(
+    (currentSession) => currentSession.session_id === resolvedSessionId
+  );
+
+  if (!hasSession) {
+    return null;
+  }
+
+  return {
+    clientId: resolvedClientId,
+    sessionId: resolvedSessionId
+  };
+}
+
 interface CodexAgentProps {
   context: RendererContext<AsyncBridgeType>;
 }
@@ -308,11 +480,39 @@ function statusLabel(status: ConnectionStatus): string {
 // eslint-disable-next-line max-lines-per-function
 export default function CodexAgent({ context }: CodexAgentProps) {
   const { asyncBridge, addPluginEventListener, removePluginEventListener, debugDriver } = context;
+  const connectionStore = context.useConnection() as ConnectionSnapshot;
+  const { selectedDevice, deviceInfoMap, deviceList } = connectionStore;
+  const [debugMode, setDebugMode] = useState<boolean>(() => {
+    return localStorage.getItem(CODEX_DEBUG_MODE_STORAGE_KEY) === 'true';
+  });
+  const [debugEntries, setDebugEntries] = useState<CodexDebugEntry[]>([]);
+  const [debugLogFilePath, setDebugLogFilePath] = useState<string>('');
+
+  const appendDebugEntry = useCallback((event: CodexDebugEvent) => {
+    const nextEntry: CodexDebugEntry = {
+      id: `codex-debug-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      level: 'info',
+      ...event
+    };
+
+    setDebugEntries((prev) => {
+      const nextEntries = [...prev, nextEntry];
+      return nextEntries.slice(-MAX_DEBUG_ENTRIES);
+    });
+
+    if (debugMode) {
+      void asyncBridge.appendDebugLogLine(formatDebugEntryLine(nextEntry)).catch(() => {
+        // ignore debug log persistence failures
+      });
+    }
+  }, [asyncBridge, debugMode]);
 
   const client = useCodexClient({
     asyncBridge,
     addPluginEventListener,
-    removePluginEventListener
+    removePluginEventListener,
+    onDebugEvent: appendDebugEntry
   });
 
   const [projectPath, setProjectPath] = useState<string>('');
@@ -583,6 +783,180 @@ export default function CodexAgent({ context }: CodexAgentProps) {
   }, [approvalPolicy]);
 
   useEffect(() => {
+    localStorage.setItem(CODEX_DEBUG_MODE_STORAGE_KEY, debugMode ? 'true' : 'false');
+  }, [debugMode]);
+
+  useEffect(() => {
+    void asyncBridge
+      .getDebugLogFilePath()
+      .then((result) => {
+        setDebugLogFilePath(result.path ?? '');
+      })
+      .catch(() => {
+        setDebugLogFilePath('');
+      });
+  }, [asyncBridge]);
+
+  useEffect(() => {
+    if (!debugMode) {
+      return;
+    }
+
+    setDebugEntries([]);
+    void asyncBridge.resetDebugLogFile().catch(() => {
+      // ignore debug log reset failures
+    });
+  }, [asyncBridge, debugMode]);
+
+  useEffect(() => {
+    const handleCdpProxyCall = async (event: { params?: CdpProxyRequest }): Promise<CdpProxyResponse> => {
+      const request = event?.params;
+      if (!request || typeof request !== 'object' || !('action' in request)) {
+        appendDebugEntry({
+          source: 'cdp',
+          action: 'proxy-invalid-request',
+          level: 'error',
+          message: 'Received an invalid CDP proxy request.',
+          payload: event?.params
+        });
+        return {
+          ok: false,
+          error: 'Invalid CDP proxy request.'
+        };
+      }
+
+      appendDebugEntry({
+        source: 'cdp',
+        action: `proxy-${request.action}`,
+        payload: request
+      });
+
+      const snapshot: ConnectionSnapshot = {
+        selectedDevice,
+        deviceInfoMap,
+        deviceList
+      };
+
+      if (request.action === 'list_sessions') {
+        const response = {
+          ok: true,
+          data: listAllSessions(snapshot, request.clientId)
+        };
+        appendDebugEntry({
+          source: 'cdp',
+          action: 'proxy-list_sessions-result',
+          payload: response.data
+        });
+        return response;
+      }
+
+      if (request.action === 'get_active_target') {
+        const response = {
+          ok: true,
+          data: getActiveTarget(snapshot)
+        };
+        appendDebugEntry({
+          source: 'cdp',
+          action: 'proxy-get_active_target-result',
+          payload: response.data
+        });
+        return response;
+      }
+
+      if (request.action === 'send_cdp') {
+        const target = resolveTargetSession(snapshot, request.clientId, request.sessionId);
+        if (!target) {
+          appendDebugEntry({
+            source: 'cdp',
+            action: 'proxy-send_cdp-missing-target',
+            level: 'error',
+            message: 'No active CDP session is available for the requested target.',
+            payload: request
+          });
+          return {
+            ok: false,
+            error: 'No active CDP session is available for the requested target.'
+          };
+        }
+
+        try {
+          const result = await debugDriver.sendCustomMessageAsync(
+            {
+              type: 'CDP',
+              clientId: target.clientId,
+              sessionId: target.sessionId,
+              params: {
+                method: request.method,
+                params: request.params ?? {}
+              }
+            },
+            request.timeoutMs ?? 30000
+          );
+
+          const payload: CdpSendMessageResult = {
+            clientId: target.clientId,
+            sessionId: target.sessionId,
+            targetKind: target.targetKind,
+            method: request.method,
+            result
+          };
+
+          appendDebugEntry({
+            source: 'cdp',
+            action: 'proxy-send_cdp-result',
+            payload
+          });
+
+          return {
+            ok: true,
+            data: payload
+          };
+        } catch (error) {
+          appendDebugEntry({
+            source: 'cdp',
+            action: 'proxy-send_cdp-error',
+            level: 'error',
+            message: error instanceof Error ? error.message : String(error),
+            payload: {
+              request,
+              target
+            }
+          });
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error)
+          };
+        }
+      }
+
+      appendDebugEntry({
+        source: 'cdp',
+        action: 'proxy-unsupported-action',
+        level: 'error',
+        payload: request
+      });
+      return {
+        ok: false,
+        error: 'Unsupported CDP proxy action.'
+      };
+    };
+
+    addPluginEventListener(CDP_PROXY_EVENT_NAME, handleCdpProxyCall);
+
+    return () => {
+      removePluginEventListener(CDP_PROXY_EVENT_NAME, handleCdpProxyCall);
+    };
+  }, [
+    addPluginEventListener,
+    appendDebugEntry,
+    debugDriver,
+    deviceInfoMap,
+    deviceList,
+    removePluginEventListener,
+    selectedDevice
+  ]);
+
+  useEffect(() => {
     persistConversationHistory(conversationHistory);
   }, [conversationHistory]);
 
@@ -817,6 +1191,24 @@ export default function CodexAgent({ context }: CodexAgentProps) {
     flexShrink: 0
   };
 
+  const debugLogContainerStyle: CSSProperties = {
+    maxHeight: 220,
+    overflowY: 'auto',
+    background: '#0f172a',
+    borderRadius: 6,
+    padding: 8
+  };
+
+  const debugEntryStyle: CSSProperties = {
+    padding: '8px 10px',
+    borderRadius: 6,
+    background: 'rgba(255, 255, 255, 0.04)',
+    color: '#e5e7eb',
+    fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
+    fontSize: 11,
+    lineHeight: 1.5
+  };
+
   const hasDraft = inputText.trim().length > 0 || contextAttachments.length > 0;
   const canSend =
     hasDraft && client.status !== 'thinking' && !pendingSend && !isViewingArchivedConversation;
@@ -934,6 +1326,26 @@ export default function CodexAgent({ context }: CodexAgentProps) {
                 />
               </Tooltip>
             </Space.Compact>
+            <Button
+              size="small"
+              type={debugMode ? 'primary' : 'default'}
+              onClick={() => setDebugMode((current) => !current)}
+            >
+              {debugMode ? 'Debug On' : 'Debug Off'}
+            </Button>
+            {debugEntries.length > 0 && (
+              <Button
+                size="small"
+                onClick={() => {
+                  setDebugEntries([]);
+                  void asyncBridge.resetDebugLogFile().catch(() => {
+                    // ignore debug log reset failures
+                  });
+                }}
+              >
+                Clear Logs
+              </Button>
+            )}
           </div>
 
           {!codexFound && (
@@ -974,6 +1386,82 @@ export default function CodexAgent({ context }: CodexAgentProps) {
               message="Viewing an archived conversation snapshot. Select Current or start a new conversation to chat again."
               style={{ flexShrink: 0 }}
             />
+          )}
+
+          {debugMode && (
+            <div style={{ flexShrink: 0, borderBottom: '1px solid #f0f0f0' }}>
+              <Collapse
+                size="small"
+                defaultActiveKey={['codex-debug']}
+                items={[
+                  {
+                    key: 'codex-debug',
+                    label: (
+                      <Space>
+                        <Text style={{ fontSize: 12 }}>Debug Log ({debugEntries.length})</Text>
+                        {debugLogFilePath && (
+                          <Text copyable style={{ fontSize: 11, color: '#94a3b8' }}>
+                            {debugLogFilePath}
+                          </Text>
+                        )}
+                      </Space>
+                    ),
+                    children: (
+                      <div style={debugLogContainerStyle}>
+                        {debugEntries.length === 0 ? (
+                          <Text style={{ fontSize: 12, color: '#94a3b8' }}>
+                            Waiting for Codex, MCP, or CDP events.
+                          </Text>
+                        ) : (
+                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            {[...debugEntries].reverse().map((entry) => (
+                              <div key={entry.id} style={debugEntryStyle}>
+                                <div style={{ marginBottom: 4 }}>
+                                  <Text
+                                    style={{
+                                      fontSize: 11,
+                                      color:
+                                        entry.level === 'error'
+                                          ? '#fca5a5'
+                                          : entry.level === 'warn'
+                                            ? '#fcd34d'
+                                            : '#93c5fd'
+                                    }}
+                                  >
+                                    {new Date(entry.timestamp).toLocaleTimeString()} [{entry.source}]
+                                    {' '}
+                                    {entry.action}
+                                  </Text>
+                                </div>
+                                {entry.message && (
+                                  <div style={{ marginBottom: entry.payload !== undefined ? 6 : 0 }}>
+                                    <Text style={{ fontSize: 11, color: '#e5e7eb' }}>
+                                      {entry.message}
+                                    </Text>
+                                  </div>
+                                )}
+                                {entry.payload !== undefined && (
+                                  <pre
+                                    style={{
+                                      margin: 0,
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-word',
+                                      color: '#cbd5e1'
+                                    }}
+                                  >
+                                    {stringifyDebugPayload(entry.payload)}
+                                  </pre>
+                                )}
+                              </div>
+                            ))}
+                          </Space>
+                        )}
+                      </div>
+                    )
+                  }
+                ]}
+              />
+            </div>
           )}
 
           <MessageList

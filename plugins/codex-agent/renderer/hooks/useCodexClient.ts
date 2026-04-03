@@ -6,14 +6,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChatEntry,
   ConnectionStatus,
+  CodexDebugEvent,
   EventMsg,
   FileChange,
+  McpApprovalDetails,
   PendingApproval,
   ServerRequestMsg,
   TextEntry,
   ToolEntry
 } from '../types/protocol';
 import { AsyncBridgeType } from '../../bridge';
+import { CdpIntegrationConfig } from '../../shared/cdp';
 
 type PendingPromise = {
   resolve: (value: unknown) => void;
@@ -39,7 +42,10 @@ type JsonRpcNotification = {
   params?: any;
 };
 
-type CodexBridge = Pick<AsyncBridgeType, 'connectSocket' | 'disconnectSocket' | 'sendSocketMessage'>;
+type CodexBridge = Pick<
+  AsyncBridgeType,
+  'connectSocket' | 'disconnectSocket' | 'sendSocketMessage' | 'getCdpIntegrationConfig'
+>;
 
 type PluginEventListener = (event: { params?: any }) => void;
 
@@ -47,6 +53,7 @@ type UseCodexClientOptions = {
   asyncBridge: CodexBridge;
   addPluginEventListener: (eventName: string, listener: PluginEventListener) => void;
   removePluginEventListener: (eventName: string, listener: PluginEventListener) => void;
+  onDebugEvent?: (event: CodexDebugEvent) => void;
 };
 
 /** ES5-compatible findLastIndex */
@@ -127,10 +134,39 @@ function buildPatchTitle(fileChanges?: Record<string, FileChange>, fallbackId?: 
   return `Patching: ${fileList.join(', ')}`;
 }
 
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function buildMcpApprovalContent(details: McpApprovalDetails): Record<string, unknown> | null {
+  if (details.mode !== 'form') {
+    return null;
+  }
+
+  const requestedSchema = toRecord(details.requestedSchema);
+  const properties = toRecord(requestedSchema?.properties);
+  const propertyNames = Object.keys(properties ?? {});
+  if (propertyNames.length === 0) {
+    return {};
+  }
+
+  return propertyNames.reduce<Record<string, unknown>>((acc, key) => {
+    const fieldSchema = toRecord(properties?.[key]);
+    if (fieldSchema && Object.prototype.hasOwnProperty.call(fieldSchema, 'default')) {
+      acc[key] = fieldSchema.default;
+    }
+    return acc;
+  }, {});
+}
+
 export function useCodexClient({
   asyncBridge,
   addPluginEventListener,
-  removePluginEventListener
+  removePluginEventListener,
+  onDebugEvent
 }: UseCodexClientOptions) {
   const connectionIdRef = useRef<number | null>(null);
   const isConnectedRef = useRef<boolean>(false);
@@ -138,6 +174,8 @@ export function useCodexClient({
   const requestIdRef = useRef<number>(100);
   const threadIdRef = useRef<string | null>(null);
   const turnIdRef = useRef<string | null>(null);
+  const cdpIntegrationRef = useRef<CdpIntegrationConfig | null>(null);
+  const firstTurnSkillInjectedRef = useRef<boolean>(false);
   const pendingResponsesRef = useRef<Map<string | number, PendingPromise>>(new Map());
   const streamingContentRef = useRef<Map<string, string>>(new Map());
   const entriesRef = useRef<ChatEntry[]>([]);
@@ -148,6 +186,16 @@ export function useCodexClient({
   const [error, setError] = useState<string | null>(null);
 
   const statusRef = useRef<ConnectionStatus>('disconnected');
+  const emitDebug = useCallback(
+    (event: CodexDebugEvent) => {
+      onDebugEvent?.({
+        level: 'info',
+        ...event
+      });
+    },
+    [onDebugEvent]
+  );
+
   const setStatusSynced = useCallback((nextStatus: ConnectionStatus) => {
     statusRef.current = nextStatus;
     setStatus(nextStatus);
@@ -179,15 +227,36 @@ export function useCodexClient({
   const sendRaw = useCallback((obj: unknown) => {
     const connectionId = connectionIdRef.current;
     if (!isConnectedRef.current || connectionId === null) {
+      emitDebug({
+        source: 'socket',
+        action: 'send-skipped',
+        level: 'warn',
+        message: 'Skipped socket send because the connection is not ready.',
+        payload: obj
+      });
       return;
     }
+
+    emitDebug({
+      source: 'socket',
+      action: 'send-notification',
+      payload: obj
+    });
+
     void asyncBridge
       .sendSocketMessage(JSON.stringify(obj), connectionId)
       .catch((error) => {
+        emitDebug({
+          source: 'socket',
+          action: 'send-error',
+          level: 'error',
+          message: toErrorMessage(error, 'Failed to send a socket notification.'),
+          payload: obj
+        });
         setError(toErrorMessage(error, 'Failed to send a message to Codex.'));
         setStatusSynced('error');
       });
-  }, [asyncBridge, setStatusSynced]);
+  }, [asyncBridge, emitDebug, setStatusSynced]);
 
   const sendRequest = useCallback(
     <T = unknown,>(method: string, params?: unknown): Promise<T> => {
@@ -197,17 +266,30 @@ export function useCodexClient({
       }
 
       const id = nextRequestId();
+      const payload = { id, method, params };
+      emitDebug({
+        source: 'socket',
+        action: 'send-request',
+        payload
+      });
       return new Promise<T>((resolve, reject) => {
         pendingResponsesRef.current.set(id, { resolve, reject });
         asyncBridge
-          .sendSocketMessage(JSON.stringify({ id, method, params }), connectionId)
+          .sendSocketMessage(JSON.stringify(payload), connectionId)
           .catch((error) => {
             pendingResponsesRef.current.delete(id);
+            emitDebug({
+              source: 'socket',
+              action: 'send-error',
+              level: 'error',
+              message: toErrorMessage(error, `Failed to send request ${method}.`),
+              payload
+            });
             reject(error);
           });
       });
     },
-    [asyncBridge]
+    [asyncBridge, emitDebug]
   );
 
   const addEntry = useCallback(
@@ -559,6 +641,21 @@ export function useCodexClient({
           );
           setStatusSynced('error');
           break;
+        case 'mcpServer/startupStatus/updated':
+          emitDebug({
+            source: 'mcp',
+            action: 'startup-status',
+            message: `${params.name ?? 'unknown'}: ${params.status ?? 'unknown'}`,
+            payload: params
+          });
+          break;
+        case 'item/mcpToolCall/progress':
+          emitDebug({
+            source: 'mcp',
+            action: 'tool-progress',
+            payload: params
+          });
+          break;
         case 'thread/closed':
           if (params.threadId && params.threadId === threadIdRef.current) {
             setStatusSynced('disconnected');
@@ -570,6 +667,7 @@ export function useCodexClient({
     },
     [
       appendToolOutput,
+      emitDebug,
       finalizeStreamingEntries,
       setStatusSynced,
       syncToolEntryFromItem,
@@ -581,6 +679,11 @@ export function useCodexClient({
   const handleServerRequest = useCallback(
     (msg: ServerRequestMsg | JsonRpcRequest) => {
       if (msg.method === 'applyPatchApproval') {
+        emitDebug({
+          source: 'socket',
+          action: 'approval-requested',
+          payload: msg
+        });
         setPendingApproval({
           requestId: msg.id,
           type: 'patch',
@@ -596,6 +699,11 @@ export function useCodexClient({
       }
 
       if (msg.method === 'execCommandApproval') {
+        emitDebug({
+          source: 'socket',
+          action: 'approval-requested',
+          payload: msg
+        });
         setPendingApproval({
           requestId: msg.id,
           type: 'exec',
@@ -613,6 +721,11 @@ export function useCodexClient({
 
       if (msg.method === 'item/fileChange/requestApproval') {
         const params = msg.params ?? {};
+        emitDebug({
+          source: 'socket',
+          action: 'approval-requested',
+          payload: msg
+        });
         setPendingApproval({
           requestId: msg.id,
           type: 'patch',
@@ -632,6 +745,11 @@ export function useCodexClient({
 
       if (msg.method === 'item/commandExecution/requestApproval') {
         const params = msg.params ?? {};
+        emitDebug({
+          source: 'socket',
+          action: 'approval-requested',
+          payload: msg
+        });
         setPendingApproval({
           requestId: msg.id,
           type: 'exec',
@@ -647,9 +765,63 @@ export function useCodexClient({
             reason: params.reason ?? undefined
           }
         });
+        return;
+      }
+
+      if (msg.method === 'mcpServer/elicitation/request') {
+        const params = msg.params ?? {};
+        const meta = toRecord(params._meta);
+        const toolParamsDisplay = Array.isArray(meta?.tool_params_display)
+          ? meta.tool_params_display
+              .map((entry) => {
+                const parsed = toRecord(entry);
+                if (!parsed || typeof parsed.name !== 'string') {
+                  return null;
+                }
+                return {
+                  name: parsed.name,
+                  displayName:
+                    typeof parsed.display_name === 'string' ? parsed.display_name : undefined,
+                  value: parsed.value
+                };
+              })
+              .filter(Boolean)
+          : undefined;
+
+        emitDebug({
+          source: 'socket',
+          action: 'approval-requested',
+          payload: msg
+        });
+        setPendingApproval({
+          requestId: msg.id,
+          type: 'mcp',
+          isServerRequest: true,
+          requestFlavor: 'v2-mcp-elicitation',
+          details: {
+            threadId: typeof params.threadId === 'string' ? params.threadId : undefined,
+            turnId: typeof params.turnId === 'string' ? params.turnId : null,
+            serverName: typeof params.serverName === 'string' ? params.serverName : undefined,
+            mode: params.mode === 'url' ? 'url' : 'form',
+            message: typeof params.message === 'string' ? params.message : undefined,
+            requestedSchema: params.requestedSchema,
+            url: typeof params.url === 'string' ? params.url : undefined,
+            elicitationId:
+              typeof params.elicitationId === 'string' ? params.elicitationId : undefined,
+            meta,
+            approvalKind:
+              typeof meta?.codex_approval_kind === 'string' ? meta.codex_approval_kind : undefined,
+            toolTitle: typeof meta?.tool_title === 'string' ? meta.tool_title : undefined,
+            toolDescription:
+              typeof meta?.tool_description === 'string' ? meta.tool_description : undefined,
+            toolName: typeof meta?.tool_name === 'string' ? meta.tool_name : undefined,
+            toolParams: meta?.tool_params,
+            toolParamsDisplay
+          }
+        });
       }
     },
-    [getPatchFileChanges]
+    [emitDebug, getPatchFileChanges]
   );
 
   const handleMessage = useCallback(
@@ -658,8 +830,52 @@ export function useCodexClient({
       try {
         message = JSON.parse(data);
       } catch (_) {
+        emitDebug({
+          source: 'socket',
+          action: 'parse-error',
+          level: 'error',
+          message: 'Failed to parse a socket message from Codex.',
+          payload: data
+        });
         console.warn('[Codex Agent] Failed to parse message:', data);
         return;
+      }
+
+      if (message.id !== undefined && Object.prototype.hasOwnProperty.call(message, 'result')) {
+        emitDebug({
+          source: 'socket',
+          action: 'receive-response',
+          payload: message
+        });
+      } else if (
+        message.id !== undefined &&
+        Object.prototype.hasOwnProperty.call(message, 'error') &&
+        message.method === undefined
+      ) {
+        emitDebug({
+          source: 'socket',
+          action: 'receive-error',
+          level: 'error',
+          payload: message
+        });
+      } else if (message.method !== undefined && message.id !== undefined) {
+        emitDebug({
+          source: 'socket',
+          action: 'receive-server-request',
+          payload: message
+        });
+      } else if (message.method !== undefined) {
+        emitDebug({
+          source: 'socket',
+          action: 'receive-notification',
+          payload: message
+        });
+      } else if (message.type !== undefined) {
+        emitDebug({
+          source: 'socket',
+          action: 'receive-event',
+          payload: message
+        });
       }
 
       if (message.id !== undefined && Object.prototype.hasOwnProperty.call(message, 'result')) {
@@ -769,6 +985,12 @@ export function useCodexClient({
     (port: number, cwd: string, approvalPolicy: 'on-failure' | 'on-request' | 'never' = 'on-failure') => {
       const normalizedCwd = cwd.trim();
       if (!normalizedCwd) {
+        emitDebug({
+          source: 'lifecycle',
+          action: 'connect-invalid-cwd',
+          level: 'error',
+          message: 'Connect aborted because no project path was provided.'
+        });
         setError('Choose a project directory before connecting to Codex.');
         setStatusSynced('error');
         return;
@@ -790,10 +1012,21 @@ export function useCodexClient({
 
         setStatusSynced('connecting');
         setError(null);
+        emitDebug({
+          source: 'lifecycle',
+          action: 'connect-start',
+          message: `Connecting to Codex with cwd ${normalizedCwd}`,
+          payload: {
+            port,
+            approvalPolicy
+          }
+        });
         connectionIdRef.current = null;
         isConnectedRef.current = false;
         threadIdRef.current = null;
         turnIdRef.current = null;
+        cdpIntegrationRef.current = null;
+        firstTurnSkillInjectedRef.current = false;
         rejectPendingResponses('Codex connection restarted.');
         streamingContentRef.current.clear();
 
@@ -801,6 +1034,14 @@ export function useCodexClient({
           const { connectionId } = await asyncBridge.connectSocket(port);
           connectionIdRef.current = connectionId;
           isConnectedRef.current = true;
+          emitDebug({
+            source: 'lifecycle',
+            action: 'socket-connected',
+            payload: {
+              connectionId,
+              port
+            }
+          });
           setStatusSynced('initializing');
 
           await sendRequest('initialize', {
@@ -814,13 +1055,69 @@ export function useCodexClient({
 
           sendRaw({ method: 'initialized' });
 
-          const threadStartResult = await sendRequest<any>('thread/start', {
+          let cdpIntegration: CdpIntegrationConfig | null = null;
+          try {
+            const integrationResult = await asyncBridge.getCdpIntegrationConfig();
+            if (integrationResult?.enabled) {
+              cdpIntegration = integrationResult;
+              emitDebug({
+                source: 'cdp',
+                action: 'integration-ready',
+                payload: {
+                  mcpServerName: integrationResult.mcpServerName,
+                  skillName: integrationResult.skillName,
+                  skillPath: integrationResult.skillPath
+                }
+              });
+            } else if (integrationResult?.error) {
+              emitDebug({
+                source: 'cdp',
+                action: 'integration-unavailable',
+                level: 'warn',
+                message: integrationResult.error
+              });
+              console.warn('[Codex Agent] CDP integration unavailable:', integrationResult.error);
+            }
+          } catch (integrationError) {
+            emitDebug({
+              source: 'cdp',
+              action: 'integration-error',
+              level: 'error',
+              message: toErrorMessage(
+                integrationError,
+                'Failed to resolve the CDP integration config.'
+              )
+            });
+            console.warn('[Codex Agent] Failed to resolve CDP integration config:', integrationError);
+          }
+
+          cdpIntegrationRef.current = cdpIntegration;
+
+          const threadStartParams: Record<string, unknown> = {
             cwd: normalizedCwd,
             approvalPolicy,
             sandbox: 'workspace-write',
             experimentalRawEvents: false,
             persistExtendedHistory: false
-          });
+          };
+
+          if (cdpIntegration?.command && cdpIntegration.args) {
+            threadStartParams.config = {
+              mcp_servers: {
+                [cdpIntegration.mcpServerName]: {
+                  command: cdpIntegration.command,
+                  args: cdpIntegration.args,
+                  env: cdpIntegration.env ?? {}
+                }
+              }
+            };
+          }
+
+          if (cdpIntegration?.developerInstructions) {
+            threadStartParams.developerInstructions = cdpIntegration.developerInstructions;
+          }
+
+          const threadStartResult = await sendRequest<any>('thread/start', threadStartParams);
 
           const startedThreadId =
             threadStartResult?.thread?.id ?? threadStartResult?.session_id ?? null;
@@ -830,6 +1127,13 @@ export function useCodexClient({
           }
 
           threadIdRef.current = startedThreadId;
+          emitDebug({
+            source: 'lifecycle',
+            action: 'thread-started',
+            payload: {
+              threadId: startedThreadId
+            }
+          });
           setStatusSynced('ready');
         } catch (requestError) {
           const failedConnectionId = connectionIdRef.current;
@@ -847,12 +1151,18 @@ export function useCodexClient({
             }
           }
 
+          emitDebug({
+            source: 'lifecycle',
+            action: 'connect-error',
+            level: 'error',
+            message: toErrorMessage(requestError, 'Failed to initialize the Codex session.')
+          });
           setError(toErrorMessage(requestError, 'Failed to initialize the Codex session.'));
           setStatusSynced('error');
         }
       })();
     },
-    [asyncBridge, rejectPendingResponses, sendRaw, sendRequest, setStatusSynced]
+    [asyncBridge, emitDebug, rejectPendingResponses, sendRaw, sendRequest, setStatusSynced]
   );
 
   const sendMessage = useCallback(
@@ -873,20 +1183,56 @@ export function useCodexClient({
       setStatusSynced('thinking');
 
       try {
+        const input: Array<Record<string, unknown>> = [];
+        const cdpIntegration = cdpIntegrationRef.current;
+        const shouldInjectSkill =
+          !firstTurnSkillInjectedRef.current &&
+          !!cdpIntegration?.skillName &&
+          !!cdpIntegration?.skillPath;
+
+        if (shouldInjectSkill) {
+          emitDebug({
+            source: 'cdp',
+            action: 'skill-injected',
+            message: `Injecting skill ${cdpIntegration?.skillName}`,
+            payload: {
+              skillName: cdpIntegration?.skillName,
+              skillPath: cdpIntegration?.skillPath
+            }
+          });
+          input.push({
+            type: 'skill',
+            name: cdpIntegration?.skillName,
+            path: cdpIntegration?.skillPath
+          });
+        }
+
+        input.push({ type: 'text', text, text_elements: [] });
+
         const turnStartResult = await sendRequest<any>('turn/start', {
           threadId,
-          input: [{ type: 'text', text, text_elements: [] }]
+          input
         });
+
+        if (shouldInjectSkill) {
+          firstTurnSkillInjectedRef.current = true;
+        }
 
         if (turnStartResult?.turn?.id) {
           turnIdRef.current = turnStartResult.turn.id;
         }
       } catch (requestError) {
+        emitDebug({
+          source: 'lifecycle',
+          action: 'turn-start-error',
+          level: 'error',
+          message: toErrorMessage(requestError, 'Failed to start the turn.')
+        });
         setError(toErrorMessage(requestError, 'Failed to start the turn.'));
         setStatusSynced('ready');
       }
     },
-    [addEntry, sendRequest, setStatusSynced]
+    [addEntry, emitDebug, sendRequest, setStatusSynced]
   );
 
   const sendMessageWithContext = useCallback(
@@ -923,9 +1269,29 @@ export function useCodexClient({
 
         if (current.isServerRequest) {
           const result =
-            current.requestFlavor === 'v2-exec' || current.requestFlavor === 'v2-patch'
-              ? { decision: decision === 'approved' ? 'accept' : 'decline' }
-              : { decision: decision === 'approved' ? 'approved' : 'denied' };
+            current.requestFlavor === 'v2-mcp-elicitation'
+              ? {
+                  action: decision === 'approved' ? 'accept' : 'decline',
+                  content:
+                    decision === 'approved'
+                      ? buildMcpApprovalContent(current.details as McpApprovalDetails)
+                      : null,
+                  _meta: null
+                }
+              : current.requestFlavor === 'v2-exec' || current.requestFlavor === 'v2-patch'
+                ? { decision: decision === 'approved' ? 'accept' : 'decline' }
+                : { decision: decision === 'approved' ? 'approved' : 'denied' };
+
+          emitDebug({
+            source: 'socket',
+            action: 'approval-responded',
+            payload: {
+              requestId: current.requestId,
+              requestFlavor: current.requestFlavor,
+              decision,
+              result
+            }
+          });
 
           sendRaw({
             id: current.requestId,
@@ -936,7 +1302,7 @@ export function useCodexClient({
         return null;
       });
     },
-    [sendRaw]
+    [emitDebug, sendRaw]
   );
 
   const disconnect = useCallback(() => {
@@ -955,8 +1321,15 @@ export function useCodexClient({
 
     threadIdRef.current = null;
     turnIdRef.current = null;
+    cdpIntegrationRef.current = null;
+    firstTurnSkillInjectedRef.current = false;
     rejectPendingResponses('Codex connection closed.');
     streamingContentRef.current.clear();
+    emitDebug({
+      source: 'lifecycle',
+      action: 'disconnect',
+      message: 'Disconnected from Codex.'
+    });
     setStatusSynced('disconnected');
     setEntriesSynced([]);
     setPendingApproval(null);

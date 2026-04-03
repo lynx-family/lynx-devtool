@@ -169,7 +169,8 @@ export type ApprovalRequestFlavor =
   | 'legacy-patch'
   | 'legacy-exec'
   | 'v2-patch'
-  | 'v2-exec';
+  | 'v2-exec'
+  | 'v2-mcp-elicitation';
 
 export type PatchDetails = {
   itemId?: string;
@@ -190,12 +191,36 @@ export type ExecDetails = {
   reason?: string;
 };
 
+export type McpApprovalParamDisplay = {
+  name: string;
+  displayName?: string;
+  value: unknown;
+};
+
+export type McpApprovalDetails = {
+  threadId?: string;
+  turnId?: string | null;
+  serverName?: string;
+  mode?: 'form' | 'url';
+  message?: string;
+  requestedSchema?: unknown;
+  url?: string;
+  elicitationId?: string;
+  meta?: Record<string, unknown> | null;
+  approvalKind?: string;
+  toolTitle?: string;
+  toolDescription?: string;
+  toolName?: string;
+  toolParams?: unknown;
+  toolParamsDisplay?: McpApprovalParamDisplay[];
+};
+
 export type PendingApproval = {
   requestId: string | number;
-  type: 'patch' | 'exec';
+  type: 'patch' | 'exec' | 'mcp';
   isServerRequest: boolean;
   requestFlavor: ApprovalRequestFlavor;
-  details: PatchDetails | ExecDetails;
+  details: PatchDetails | ExecDetails | McpApprovalDetails;
 };
 
 // ─── Connection & Policy ──────────────────────────────────────────────────────
@@ -209,3 +234,20 @@ export type ConnectionStatus =
   | 'error';
 
 export type ApprovalPolicy = 'on-failure' | 'on-request' | 'never';
+
+// ─── Debug Log ────────────────────────────────────────────────────────────────
+
+export type CodexDebugLevel = 'info' | 'warn' | 'error';
+
+export type CodexDebugEvent = {
+  source: 'lifecycle' | 'socket' | 'mcp' | 'cdp';
+  action: string;
+  level?: CodexDebugLevel;
+  message?: string;
+  payload?: unknown;
+};
+
+export type CodexDebugEntry = CodexDebugEvent & {
+  id: string;
+  timestamp: number;
+};
