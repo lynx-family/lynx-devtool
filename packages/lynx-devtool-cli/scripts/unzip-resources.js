@@ -60,8 +60,8 @@ function extractTarGz(tarFile, destDir) {
     ensureDir(destDir);
 
     try {
-        // Try using tar command (available on Windows 10+ and Unix)
-        runCommand(`tar -xf "${tarFile}" -C "${destDir}"`);
+        // Explicit gzip extraction is more reliable on macOS than tar auto-detection.
+        runCommand(`tar -xzf "${tarFile}" -C "${destDir}"`);
         console.log(`Extracted: ${tarFile} -> ${destDir}`);
     } catch (error) {
         console.error(`Failed to extract ${tarFile}:`, error.message);

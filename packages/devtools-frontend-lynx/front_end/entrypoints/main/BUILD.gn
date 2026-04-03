@@ -8,6 +8,7 @@ import("../visibility.gni")
 
 devtools_module("main") {
   sources = [
+    "CodexContextButton.ts",
     "ExecutionContextSelector.ts",
     "MainImpl.ts",
     "SimpleApp.ts",
@@ -27,6 +28,8 @@ devtools_module("main") {
     "../../models/logs:bundle",
     "../../models/persistence:bundle",
     "../../models/workspace:bundle",
+    "../../panels/console:bundle",
+    "../../panels/elements:bundle",
     "../../panels/snippets:bundle",
     "../../panels/timeline:bundle",
     "../../ui/legacy:bundle",

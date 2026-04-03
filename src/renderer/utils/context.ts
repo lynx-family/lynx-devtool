@@ -111,7 +111,7 @@ export class RendererContext implements IPluginRendererContext {
     };
   }
 
-  publishPluginEvent(event: PluginEvent) {
+  publishPluginEvent = (event: PluginEvent) => {
     this._pluginEventListeners.get(event.eventName)?.forEach((listener) => {
       const resp = listener(event);
       if (event.isAsync && event.id) {
@@ -124,17 +124,17 @@ export class RendererContext implements IPluginRendererContext {
         }
       }
     });
-  }
+  };
 
-  addPluginEventListener(eventName: string, listener: (event: PluginEvent) => void) {
+  addPluginEventListener = (eventName: string, listener: (event: PluginEvent) => void) => {
     if (this._pluginEventListeners.has(eventName)) {
       this._pluginEventListeners.get(eventName)?.push(listener);
     } else {
       this._pluginEventListeners.set(eventName, [listener]);
     }
-  }
+  };
 
-  removePluginEventListener(eventName: string, listener: (event: PluginEvent) => void) {
+  removePluginEventListener = (eventName: string, listener: (event: PluginEvent) => void) => {
     if (this._pluginEventListeners.has(eventName)) {
       const listeners = this._pluginEventListeners.get(eventName);
       if (listeners) {
@@ -144,5 +144,5 @@ export class RendererContext implements IPluginRendererContext {
         }
       }
     }
-  }
+  };
 }
