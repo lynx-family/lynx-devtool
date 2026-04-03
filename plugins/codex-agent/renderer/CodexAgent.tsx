@@ -19,6 +19,7 @@ import {
   SendOutlined,
   FolderOpenOutlined,
   RobotOutlined,
+  QuestionCircleOutlined,
   WarningOutlined,
   PlusCircleOutlined,
 } from '@ant-design/icons';
@@ -62,6 +63,15 @@ const CODEX_CONVERSATION_HISTORY_STORAGE_KEY = 'lynx-devtool:codex-conversation-
 const CODEX_DEBUG_MODE_STORAGE_KEY = 'lynx-devtool:codex-debug-mode';
 const MAX_DEBUG_ENTRIES = 200;
 const MAX_CONVERSATION_HISTORY_ITEMS = 20;
+const DEBUG_UNLOCK_TAP_TARGET = 5;
+const DEBUG_UNLOCK_TAP_WINDOW_MS = 1500;
+const APPROVAL_POLICY_OPTIONS: Array<{ value: ApprovalPolicy; label: string }> = [
+  { value: 'on-failure', label: 'Ask if blocked' },
+  { value: 'on-request', label: 'Ask first' },
+  { value: 'never', label: 'Never ask' }
+];
+const APPROVAL_POLICY_TOOLTIP =
+  'Controls when Codex should ask you to approve terminal commands or file edits. Applies on the next start or reconnect.';
 
 type CodexContextPayload = {
   id?: string;
@@ -188,6 +198,57 @@ function firstMeaningfulLine(text: string): string {
   return '';
 }
 
+function extractContextTextBlock(text: string, title: string): string {
+  const marker = `${title}\n\`\`\`text\n`;
+  const start = text.indexOf(marker);
+  if (start < 0) {
+    return '';
+  }
+
+  const contentStart = start + marker.length;
+  const end = text.indexOf('\n```', contentStart);
+  if (end < 0) {
+    return '';
+  }
+
+  return text.slice(contentStart, end).trim();
+}
+
+function summarizeContextAttachmentText(source: string | undefined, text: string): string {
+  const previewSource =
+    (source === 'console-selection' && extractContextTextBlock(text, 'Selected text:')) ||
+    extractContextTextBlock(text, 'Message text:') ||
+    firstMeaningfulLine(text);
+  const normalized = previewSource.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  return truncateText(normalized, 56);
+}
+
+function buildContextAttachmentLabel(payload?: CodexContextPayload): string {
+  const fallbackLabel = payload?.label?.trim() || labelForContextSource(payload?.source);
+  const text = payload?.text?.trim();
+  if (!text) {
+    return fallbackLabel;
+  }
+
+  const preview = summarizeContextAttachmentText(payload?.source, text);
+  if (!preview) {
+    return fallbackLabel;
+  }
+
+  switch (payload?.source) {
+    case 'console-selection':
+      return `Console: ${preview}`;
+    case 'console-error':
+      return `Console error: ${preview}`;
+    default:
+      return fallbackLabel;
+  }
+}
+
 function summarizeConversation(entries: ChatEntry[]): Pick<ConversationHistoryItem, 'title' | 'preview'> {
   const textEntries = entries.filter((entry): entry is Extract<ChatEntry, { kind: 'text' }> => entry.kind === 'text');
   const toolEntries = entries.filter((entry): entry is Extract<ChatEntry, { kind: 'tool' }> => entry.kind === 'tool');
@@ -267,7 +328,7 @@ function toContextAttachment(payload?: CodexContextPayload): CodexContextAttachm
 
   return {
     id: payload?.id ?? createContextAttachmentId(),
-    label: payload?.label?.trim() || labelForContextSource(payload?.source),
+    label: buildContextAttachmentLabel(payload),
     text,
     createdAt: payload?.createdAt ?? Date.now(),
     source: payload?.source ?? 'devtool-panel'
@@ -485,8 +546,11 @@ export default function CodexAgent({ context }: CodexAgentProps) {
   const [debugMode, setDebugMode] = useState<boolean>(() => {
     return localStorage.getItem(CODEX_DEBUG_MODE_STORAGE_KEY) === 'true';
   });
+  const [debugControlsUnlocked, setDebugControlsUnlocked] = useState<boolean>(false);
   const [debugEntries, setDebugEntries] = useState<CodexDebugEntry[]>([]);
   const [debugLogFilePath, setDebugLogFilePath] = useState<string>('');
+  const debugUnlockTapCountRef = useRef<number>(0);
+  const debugUnlockResetTimerRef = useRef<number | null>(null);
 
   const appendDebugEntry = useCallback((event: CodexDebugEvent) => {
     const nextEntry: CodexDebugEntry = {
@@ -532,6 +596,33 @@ export default function CodexAgent({ context }: CodexAgentProps) {
   const [pendingSend, setPendingSend] = useState<PendingSend | null>(null);
   const consoleErrorsRef = useRef<string[]>([]);
   const connectOnSendInFlightRef = useRef<boolean>(false);
+
+  const clearDebugUnlockTimer = useCallback(() => {
+    if (debugUnlockResetTimerRef.current !== null) {
+      window.clearTimeout(debugUnlockResetTimerRef.current);
+      debugUnlockResetTimerRef.current = null;
+    }
+  }, []);
+
+  const handleDebugUnlockTap = useCallback(() => {
+    if (debugControlsUnlocked || debugMode) {
+      return;
+    }
+
+    debugUnlockTapCountRef.current += 1;
+    clearDebugUnlockTimer();
+
+    if (debugUnlockTapCountRef.current >= DEBUG_UNLOCK_TAP_TARGET) {
+      debugUnlockTapCountRef.current = 0;
+      setDebugControlsUnlocked(true);
+      return;
+    }
+
+    debugUnlockResetTimerRef.current = window.setTimeout(() => {
+      debugUnlockTapCountRef.current = 0;
+      debugUnlockResetTimerRef.current = null;
+    }, DEBUG_UNLOCK_TAP_WINDOW_MS);
+  }, [clearDebugUnlockTimer, debugControlsUnlocked, debugMode]);
 
   const appendIncomingContext = useCallback((payload?: CodexContextPayload) => {
     const attachment = toContextAttachment(payload);
@@ -787,6 +878,12 @@ export default function CodexAgent({ context }: CodexAgentProps) {
   }, [debugMode]);
 
   useEffect(() => {
+    if (debugMode) {
+      setDebugControlsUnlocked(true);
+    }
+  }, [debugMode]);
+
+  useEffect(() => {
     void asyncBridge
       .getDebugLogFilePath()
       .then((result) => {
@@ -807,6 +904,12 @@ export default function CodexAgent({ context }: CodexAgentProps) {
       // ignore debug log reset failures
     });
   }, [asyncBridge, debugMode]);
+
+  useEffect(() => {
+    return () => {
+      clearDebugUnlockTimer();
+    };
+  }, [clearDebugUnlockTimer]);
 
   useEffect(() => {
     const handleCdpProxyCall = async (event: { params?: CdpProxyRequest }): Promise<CdpProxyResponse> => {
@@ -1168,15 +1271,7 @@ export default function CodexAgent({ context }: CodexAgentProps) {
 
   const inputRowStyle: CSSProperties = {
     display: 'flex',
-    gap: 6,
-    alignItems: 'flex-end'
-  };
-
-  const sendColumnStyle: CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    width: 160,
+    alignItems: 'stretch',
     flexShrink: 0
   };
 
@@ -1220,16 +1315,36 @@ export default function CodexAgent({ context }: CodexAgentProps) {
     client.status === 'initializing' ||
     client.status === 'ready' ||
     client.status === 'thinking';
+  const showDebugControls = debugMode || debugControlsUnlocked;
 
   const composerStyle: CSSProperties = {
     flex: 1,
+    minWidth: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    padding: '8px 11px',
-    border: '1px solid #d9d9d9',
-    borderRadius: 6,
-    background: isConnected ? '#fff' : '#fafafa'
+    gap: 12,
+    padding: '14px 16px 12px',
+    border: '1px solid #e5e7eb',
+    borderRadius: 24,
+    background: isConnected ? '#fafafa' : '#f5f5f5',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)'
+  };
+
+  const composerFooterStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+    minHeight: 40
+  };
+
+  const composerFooterMetaStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+    minWidth: 0
   };
 
   const attachmentRowStyle: CSSProperties = {
@@ -1238,22 +1353,74 @@ export default function CodexAgent({ context }: CodexAgentProps) {
     gap: 6
   };
 
-  const inputLabelStyle: CSSProperties = {
-    fontSize: 12,
-    color: '#8c8c8c',
-    lineHeight: 1
-  };
-
   const approvalLabelStyle: CSSProperties = {
-    fontSize: 11,
-    color: '#595959',
-    lineHeight: 1.2
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 1,
+    fontWeight: 500,
+    whiteSpace: 'nowrap'
   };
 
-  const approvalHintStyle: CSSProperties = {
-    fontSize: 10,
-    color: '#8c8c8c',
-    lineHeight: 1.3
+  const approvalControlStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 34,
+    padding: '0 10px 0 12px',
+    borderRadius: 999,
+    background: '#fff',
+    border: '1px solid #e5e7eb'
+  };
+
+  const approvalLabelGroupStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0
+  };
+
+  const approvalSelectStyle: CSSProperties = {
+    minWidth: 132,
+    fontSize: 13
+  };
+
+  const approvalInfoIconStyle: CSSProperties = {
+    color: '#9ca3af',
+    fontSize: 14,
+    cursor: 'help'
+  };
+
+  const composerActionGroupStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 'auto'
+  };
+
+  const composerActionButtonStyle: CSSProperties = {
+    width: 40,
+    height: 40,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
+  const inputAccessoryRowStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 8,
+    flexWrap: 'wrap'
+  };
+
+  const textAreaStyle: CSSProperties = {
+    flex: 1,
+    minHeight: 76,
+    padding: 0,
+    fontSize: 14,
+    lineHeight: 1.6,
+    resize: 'none',
+    background: 'transparent'
   };
 
   const currentConversationSummary =
@@ -1278,8 +1445,13 @@ export default function CodexAgent({ context }: CodexAgentProps) {
     <div style={rootStyle}>
       {/* Header */}
       <div style={headerStyle}>
-        <RobotOutlined style={{ fontSize: 18, color: '#1677ff' }} />
-        <span style={{ fontWeight: 600, fontSize: 14 }}>Codex Agent</span>
+        <div
+          onClick={handleDebugUnlockTap}
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <RobotOutlined style={{ fontSize: 18, color: '#1677ff' }} />
+          <span style={{ fontWeight: 600, fontSize: 14 }}>Codex Agent</span>
+        </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span
             style={{
@@ -1303,6 +1475,34 @@ export default function CodexAgent({ context }: CodexAgentProps) {
           onSelectCurrent={handleSelectCurrentConversation}
           onSelectHistory={handleSelectHistoryConversation}
           onStartNewConversation={handleStartNewConversation}
+          footerContent={
+            showDebugControls ? (
+              <>
+                <Button
+                  size="small"
+                  type={debugMode ? 'primary' : 'default'}
+                  onClick={() => setDebugMode((current) => !current)}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  {debugMode ? 'Debug On' : 'Debug Off'}
+                </Button>
+                {debugEntries.length > 0 && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setDebugEntries([]);
+                      void asyncBridge.resetDebugLogFile().catch(() => {
+                        // ignore debug log reset failures
+                      });
+                    }}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    Clear Logs
+                  </Button>
+                )}
+              </>
+            ) : undefined
+          }
         />
 
         <div style={mainPanelStyle}>
@@ -1326,26 +1526,6 @@ export default function CodexAgent({ context }: CodexAgentProps) {
                 />
               </Tooltip>
             </Space.Compact>
-            <Button
-              size="small"
-              type={debugMode ? 'primary' : 'default'}
-              onClick={() => setDebugMode((current) => !current)}
-            >
-              {debugMode ? 'Debug On' : 'Debug Off'}
-            </Button>
-            {debugEntries.length > 0 && (
-              <Button
-                size="small"
-                onClick={() => {
-                  setDebugEntries([]);
-                  void asyncBridge.resetDebugLogFile().catch(() => {
-                    // ignore debug log reset failures
-                  });
-                }}
-              >
-                Clear Logs
-              </Button>
-            )}
           </div>
 
           {!codexFound && (
@@ -1554,7 +1734,23 @@ export default function CodexAgent({ context }: CodexAgentProps) {
                   {contextAttachments.length > 0 && (
                     <div style={attachmentRowStyle}>
                       {contextAttachments.map((attachment) => (
-                        <Tooltip key={attachment.id} title={attachment.label}>
+                        <Tooltip
+                          key={attachment.id}
+                          title={
+                            <div
+                              style={{
+                                maxWidth: 420,
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
+                                fontSize: 11,
+                                lineHeight: 1.5
+                              }}
+                            >
+                              {attachment.text}
+                            </div>
+                          }
+                        >
                           <Tag
                             closable
                             onClose={(event) => {
@@ -1569,7 +1765,6 @@ export default function CodexAgent({ context }: CodexAgentProps) {
                       ))}
                     </div>
                   )}
-                  <Text style={inputLabelStyle}>User input:</Text>
                   <TextArea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
@@ -1583,61 +1778,68 @@ export default function CodexAgent({ context }: CodexAgentProps) {
                     }
                     autoSize={{ minRows: 2, maxRows: 6 }}
                     bordered={false}
-                    style={{ flex: 1, padding: 0, fontSize: 13, resize: 'none', background: 'transparent' }}
+                    style={textAreaStyle}
                   />
-                </div>
-                <div style={sendColumnStyle}>
-                  <Tooltip title="Controls when Codex should ask you to approve terminal commands or file edits.">
-                    <Text style={approvalLabelStyle}>Approval for commands / edits</Text>
-                  </Tooltip>
-                  <Select
-                    value={approvalPolicy}
-                    onChange={setApprovalPolicy}
-                    size="small"
-                    style={{ width: '100%', fontSize: 12 }}
-                    disabled={approvalLocked}
-                    options={[
-                      { value: 'on-failure', label: 'Ask only if blocked' },
-                      { value: 'on-request', label: 'Ask before actions' },
-                      { value: 'never', label: 'Never ask' }
-                    ]}
-                  />
-                  <Text style={approvalHintStyle}>
-                    Controls whether Codex asks before terminal commands or file edits. Applies on
-                    the next start or reconnect.
-                  </Text>
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    onClick={handleSend}
-                    loading={Boolean(pendingSend)}
-                    disabled={!canSend}
-                    style={{ width: 68 }}
-                  >
-                    Send
-                  </Button>
-                  {canStop && (
-                    <Button
-                      danger
-                      icon={<StopOutlined />}
-                      onClick={() => client.interrupt()}
-                      style={{ width: 68 }}
-                    >
-                      Stop
-                    </Button>
-                  )}
+                  <div style={composerFooterStyle}>
+                    <div style={composerFooterMetaStyle}>
+                      <div style={approvalControlStyle}>
+                        <Tooltip title={APPROVAL_POLICY_TOOLTIP}>
+                          <div style={approvalLabelGroupStyle}>
+                            <Text style={approvalLabelStyle}>Approve</Text>
+                            <QuestionCircleOutlined style={approvalInfoIconStyle} />
+                          </div>
+                        </Tooltip>
+                        <Select
+                          value={approvalPolicy}
+                          onChange={setApprovalPolicy}
+                          size="small"
+                          bordered={false}
+                          style={approvalSelectStyle}
+                          disabled={approvalLocked}
+                          options={APPROVAL_POLICY_OPTIONS}
+                        />
+                      </div>
+                    </div>
+                    <div style={composerActionGroupStyle}>
+                      {canStop ? (
+                        <Tooltip title="Stop">
+                          <Button
+                            danger
+                            shape="circle"
+                            icon={<StopOutlined />}
+                            onClick={() => client.interrupt()}
+                            style={composerActionButtonStyle}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Send">
+                          <Button
+                            type="primary"
+                            shape="circle"
+                            icon={<SendOutlined />}
+                            onClick={handleSend}
+                            loading={Boolean(pendingSend)}
+                            disabled={!canSend}
+                            style={composerActionButtonStyle}
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               {consoleErrors.length > 0 && (
-                <Button
-                  size="small"
-                  type="dashed"
-                  icon={<PlusCircleOutlined />}
-                  onClick={() => handleAddConsoleError(consoleErrors[0])}
-                  style={{ alignSelf: 'flex-start', fontSize: 11 }}
-                >
-                  Attach latest console error
-                </Button>
+                <div style={inputAccessoryRowStyle}>
+                  <Button
+                    size="small"
+                    type="dashed"
+                    icon={<PlusCircleOutlined />}
+                    onClick={() => handleAddConsoleError(consoleErrors[0])}
+                    style={{ fontSize: 11 }}
+                  >
+                    Attach latest console error
+                  </Button>
+                </div>
               )}
             </div>
           )}

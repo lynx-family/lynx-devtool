@@ -18,6 +18,7 @@ type ConversationSidebarProps = {
   onSelectCurrent: () => void;
   onSelectHistory: (conversationId: string) => void;
   onStartNewConversation: () => void;
+  footerContent?: React.ReactNode;
 };
 
 function formatTimestamp(timestamp?: number | null): string {
@@ -118,7 +119,8 @@ export function ConversationSidebar({
   selectedHistoryId,
   onSelectCurrent,
   onSelectHistory,
-  onStartNewConversation
+  onStartNewConversation,
+  footerContent
 }: ConversationSidebarProps) {
   return (
     <aside
@@ -207,6 +209,21 @@ export function ConversationSidebar({
           )}
         </div>
       </div>
+
+      {footerContent && (
+        <div
+          style={{
+            padding: '12px',
+            borderTop: '1px solid #f0f0f0',
+            background: '#fafafa',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8
+          }}
+        >
+          {footerContent}
+        </div>
+      )}
     </aside>
   );
 }
