@@ -24249,6 +24249,16 @@
                             "type": "string"
                         }
                     ]
+                },
+                {
+                    "name": "setTraceMode",
+                    "description": "set trace mode",
+                    "parameters": [
+                        {
+                            "name": "enableTraceMode",
+                            "type": "boolean"
+                        }
+                    ]
                 }
             ]
         },

@@ -4,14 +4,39 @@
 
 import * as UI from '../../ui/legacy/legacy.js';
 
+type ReactRuntime = {
+  createElement: (type: unknown, props?: Record<string, unknown> | null) => unknown,
+};
+
+type ReactDOMRuntime = {
+  render: (element: unknown, container: Element) => void,
+};
+
+type RuntimeScriptDescriptor = {
+  src: string,
+  integrity: string,
+};
+
 declare global {
   interface Window {
-    React: typeof import('react');
-    ReactDOM: typeof import('react-dom');
+    React?: ReactRuntime;
+    ReactDOM?: ReactDOMRuntime;
   }
 }
 
 let preactDevtoolsPanelInstance: PreactDevtoolsPanel;
+
+const runtimeScriptLoads = new Map<string, Promise<void>>();
+const reactRuntimeScripts: RuntimeScriptDescriptor[] = [
+  {
+    src: 'https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.production.min.js',
+    integrity: 'sha384-7Er69WnAl0+tY5MWEvnQzWHeDFjgHSnlQfDDeWUvv8qlRXtzaF/pNo18Q2aoZNiO',
+  },
+  {
+    src: 'https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.production.min.js',
+    integrity: 'sha384-vj2XpC1SOa8PHrb0YlBqKN7CQzJYO72jz4CkDQ+ePL1pwOV4+dn05rPrbLGUuvCv',
+  },
+];
 
 const remoteListenerMap: Record<string, ((message: any) => void)[]> = {};
 const extensionListenerMap: Record<string, { listener: (message: any) => void, receiver: string }[]> = {};
@@ -27,6 +52,43 @@ const addExtensionListener = (type: string, listener: { listener: (message: any)
     extensionListenerMap[type] = [];
   }
   extensionListenerMap[type].push(listener);
+};
+
+const loadRuntimeScript = ({ src, integrity }: RuntimeScriptDescriptor): Promise<void> => {
+  const existingLoad = runtimeScriptLoads.get(src);
+  if (existingLoad) {
+    return existingLoad;
+  }
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const selector = `script[data-ldt-runtime="${src}"]`;
+    const existingScript = document.querySelector<HTMLScriptElement>(selector);
+    if (existingScript) {
+      if (existingScript.dataset.ldtRuntimeReady === 'true') {
+        resolve();
+        return;
+      }
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error(`Failed to load runtime script: ${src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.dataset.ldtRuntime = src;
+    script.integrity = integrity;
+    script.src = src;
+    script.addEventListener('load', () => {
+      script.dataset.ldtRuntimeReady = 'true';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', () => reject(new Error(`Failed to load runtime script: ${src}`)), { once: true });
+    (document.head || document.documentElement).appendChild(script);
+  });
+
+  runtimeScriptLoads.set(src, promise);
+  return promise;
 };
 
 
@@ -82,13 +144,14 @@ export const postMessage = (id: string) => (type: string, message: any) => {
 
 export class PreactDevtoolsPanel extends UI.Panel.Panel {
   static id = 'preact_devtools';
-  static PREACT_DEVTOOLS_BUNDLE_URL = 'https://unpkg.com/@lynx-js/preact-devtools@latest/dist/index.js'
-  
+  static PREACT_DEVTOOLS_BUNDLE_URL = 'https://unpkg.com/@lynx-js/preact-devtools@latest/dist/index.js';
+  static #reactRuntimePromise: Promise<void> | null = null;
+
   onScreenCastPanelUINodeIdSelectedListeners: ((UINodeId: string) => void)[] = [];
-  
+
   constructor() {
     super('preact_devtools');
-    
+
     window.addEventListener("message", (event) => {
       if (!event.data) {
         return;
@@ -109,36 +172,72 @@ export class PreactDevtoolsPanel extends UI.Panel.Panel {
           break;
       }
     });
-    
-    const div = document.createElement('div');
-    const text = document.createTextNode('Preact Devtools Panel is initializing...');
-    div.appendChild(text);
-    this.contentElement.appendChild(
-      div
-    );
-    
-    this.loadPreactDevtoolsBundle();
+
+    this.renderStatus('Preact Devtools Panel is initializing...');
+    void this.loadPreactDevtoolsBundle();
   }
-  
-  async loadPreactDevtoolsBundle() {
-    const preactDevtoolsBundle = await import(PreactDevtoolsPanel.PREACT_DEVTOOLS_BUNDLE_URL);
-    const PreactDevtoolsApp = preactDevtoolsBundle.default;
-    window.ReactDOM.render(
-      window.React.createElement(PreactDevtoolsApp, {
-        isOSSLynxDevtool: true,
-        addEventListener: addEventListener(PreactDevtoolsPanel.id),
-        postMessage: postMessage(PreactDevtoolsPanel.id),
-        addOnScreenCastPanelUINodeIdSelectedListener: (listener: (UINodeId: string) => void) => {
-          this.onScreenCastPanelUINodeIdSelectedListeners.push(listener);
-        },
-        onPreactDevtoolsPanelUINodeIdSelected: (UINodeId: string) => {
-          this.onPreactDevtoolsPanelUINodeIdSelected(UINodeId);
+
+  static async ensureReactRuntime(): Promise<void> {
+    if (window.React && window.ReactDOM) {
+      return;
+    }
+
+    if (!PreactDevtoolsPanel.#reactRuntimePromise) {
+      PreactDevtoolsPanel.#reactRuntimePromise = (async () => {
+        for (const script of reactRuntimeScripts) {
+          await loadRuntimeScript(script);
         }
-      }),
-      this.contentElement
-    );
+        if (!window.React || !window.ReactDOM) {
+          throw new Error('React runtime is unavailable after loading the panel dependencies.');
+        }
+      })().catch(error => {
+        PreactDevtoolsPanel.#reactRuntimePromise = null;
+        throw error;
+      });
+    }
+
+    await PreactDevtoolsPanel.#reactRuntimePromise;
   }
-  
+
+  renderStatus(message: string): void {
+    this.contentElement.textContent = '';
+    const div = document.createElement('div');
+    div.textContent = message;
+    this.contentElement.appendChild(div);
+  }
+
+  async loadPreactDevtoolsBundle() {
+    try {
+      this.renderStatus('Loading Preact Devtools Panel...');
+      await PreactDevtoolsPanel.ensureReactRuntime();
+      const preactDevtoolsBundle = await import(PreactDevtoolsPanel.PREACT_DEVTOOLS_BUNDLE_URL);
+      const PreactDevtoolsApp = preactDevtoolsBundle.default;
+
+      if (!window.React || !window.ReactDOM) {
+        throw new Error('React runtime is unavailable.');
+      }
+
+      this.contentElement.textContent = '';
+      window.ReactDOM.render(
+        window.React.createElement(PreactDevtoolsApp, {
+          isOSSLynxDevtool: true,
+          addEventListener: addEventListener(PreactDevtoolsPanel.id),
+          postMessage: postMessage(PreactDevtoolsPanel.id),
+          addOnScreenCastPanelUINodeIdSelectedListener: (listener: (UINodeId: string) => void) => {
+            this.onScreenCastPanelUINodeIdSelectedListeners.push(listener);
+          },
+          onPreactDevtoolsPanelUINodeIdSelected: (UINodeId: string) => {
+            this.onPreactDevtoolsPanelUINodeIdSelected(UINodeId);
+          }
+        }),
+        this.contentElement
+      );
+    } catch (error) {
+      console.error('Failed to initialize Preact Devtools panel', error);
+      this.renderStatus('Preact Devtools is unavailable. Check network access and reload the panel.');
+    }
+  }
+
   onPreactDevtoolsPanelUINodeIdSelected(UINodeId: string) {
     window.postMessage({
       type: 'panel:preact_devtools',

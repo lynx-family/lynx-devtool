@@ -151,6 +151,14 @@ copyStaticFilesToDir() {
   
   mkdir -p output/front_end_"$timestamp"
   cp -r out/Default/gen/front_end/* output/front_end_"$timestamp"/
+  mkdir -p output/front_end_"$timestamp"/Images
+  find front_end/Images/src -maxdepth 1 -type f | while read -r image_path; do
+    image_name="$(basename "$image_path")"
+    if [ ! -f "output/front_end_${timestamp}/Images/${image_name}" ]; then
+      cp "$image_path" "output/front_end_${timestamp}/Images/${image_name}"
+    fi
+  done
+  node ../../scripts/transpile-devtools-css.js "$(pwd)/output/front_end_${timestamp}"
   
   cp out/Default/gen/front_end/inspector.html output/inspector.html
   
@@ -159,7 +167,10 @@ copyStaticFilesToDir() {
   else
     sed -i -e "s|\.\/|./front_end_${timestamp}/|g" output/inspector.html
   fi
-  
+
+  node ../../scripts/patch-devtools-runtime-compat.js \
+    "$(pwd)/output/front_end_${timestamp}"
+
   cd output || exit
   
   if [ -d "front_end_${timestamp}" ] && [ -f "inspector.html" ]; then

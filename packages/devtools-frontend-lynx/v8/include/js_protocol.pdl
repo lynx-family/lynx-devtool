@@ -1701,6 +1701,10 @@ domain Lynx
     returns
       # Id of the component.
       string data
+  # set trace mode
+  command setTraceMode
+    parameters
+      boolean enableTraceMode
 
 # This domain is deprecated.
 deprecated domain Schema

@@ -3,6 +3,284 @@
 // found in the LICENSE file.
 /* eslint-disable indent */
 (function(window) {
+  if (!window.__LDT_COMPAT_POLYFILLS__) {
+    window.__LDT_COMPAT_POLYFILLS__ = true;
+
+    const ArrayCtor = window.Array;
+    const ElementCtor = window.Element;
+    const EventCtor = window.Event;
+    const HTMLElementCtor = window.HTMLElement;
+    const MapCtor = window.Map;
+    const ObjectCtor = window.Object;
+    const PromiseCtor = window.Promise;
+    const RangeErrorCtor = window.RangeError;
+    const URLCtor = window.URL;
+
+    const defineArrayMethod = (name, implementation) => {
+      if (!ArrayCtor.prototype[name]) {
+        ObjectCtor.defineProperty(ArrayCtor.prototype, name, {
+          configurable: true,
+          writable: true,
+          value: implementation,
+        });
+      }
+    };
+
+    const toArrayCopy = value => ArrayCtor.prototype.slice.call(value);
+
+    const defineConstructorMethod = (constructor, name, implementation) => {
+      if (constructor && !constructor[name]) {
+        ObjectCtor.defineProperty(constructor, name, {
+          configurable: true,
+          writable: true,
+          value: implementation,
+        });
+      }
+    };
+
+    const createToggleEvent = (type, oldState, newState, cancelable) => {
+      const event = new EventCtor(type, {bubbles: false, cancelable});
+      ObjectCtor.defineProperty(event, 'oldState', {
+        configurable: true,
+        enumerable: true,
+        value: oldState,
+      });
+      ObjectCtor.defineProperty(event, 'newState', {
+        configurable: true,
+        enumerable: true,
+        value: newState,
+      });
+      return event;
+    };
+
+    const isPopoverOpen = element => {
+      return Boolean(element && element.getAttribute && element.getAttribute('data-ldt-popover-open') === 'true');
+    };
+
+    const setPopoverOpen = (element, nextState) => {
+      if (!element || !element.setAttribute || !element.removeAttribute) {
+        return;
+      }
+      if (nextState) {
+        element.setAttribute('data-ldt-popover-open', 'true');
+      } else {
+        element.removeAttribute('data-ldt-popover-open');
+      }
+    };
+
+    if (!PromiseCtor.withResolvers) {
+      ObjectCtor.defineProperty(PromiseCtor, 'withResolvers', {
+        configurable: true,
+        writable: true,
+        value: function withResolvers() {
+          let resolve;
+          let reject;
+          const PromiseClass = typeof this === 'function' ? this : PromiseCtor;
+          const promise = new PromiseClass((resolveCallback, rejectCallback) => {
+            resolve = resolveCallback;
+            reject = rejectCallback;
+          });
+          return {promise, resolve, reject};
+        },
+      });
+    }
+
+    defineConstructorMethod(URLCtor, 'canParse', function canParse(url, base) {
+      try {
+        if (typeof base === 'undefined') {
+          new URLCtor(url);
+        } else {
+          new URLCtor(url, base);
+        }
+        return true;
+      } catch (error) {
+        return false;
+      }
+    });
+
+    if (ElementCtor && ElementCtor.prototype && !ElementCtor.prototype.__ldtPopoverSelectorCompat) {
+      const nativeMatches = ElementCtor.prototype.matches;
+      if (typeof nativeMatches === 'function') {
+        ObjectCtor.defineProperty(ElementCtor.prototype, 'matches', {
+          configurable: true,
+          writable: true,
+          value: function matches(selector) {
+            if (selector === ':popover-open') {
+              try {
+                return nativeMatches.call(this, selector);
+              } catch (error) {
+                return isPopoverOpen(this);
+              }
+            }
+            return nativeMatches.call(this, selector);
+          },
+        });
+        ObjectCtor.defineProperty(ElementCtor.prototype, '__ldtPopoverSelectorCompat', {
+          configurable: true,
+          writable: true,
+          value: true,
+        });
+      }
+    }
+
+    if (HTMLElementCtor && HTMLElementCtor.prototype && typeof HTMLElementCtor.prototype.showPopover !== 'function' &&
+        EventCtor) {
+      ObjectCtor.defineProperty(HTMLElementCtor.prototype, 'showPopover', {
+        configurable: true,
+        writable: true,
+        value: function showPopover() {
+          if (isPopoverOpen(this)) {
+            return;
+          }
+          const beforeToggleEvent = createToggleEvent('beforetoggle', 'closed', 'open', true);
+          if (!this.dispatchEvent(beforeToggleEvent)) {
+            return;
+          }
+          setPopoverOpen(this, true);
+          this.dispatchEvent(createToggleEvent('toggle', 'closed', 'open', false));
+        },
+      });
+
+      ObjectCtor.defineProperty(HTMLElementCtor.prototype, 'hidePopover', {
+        configurable: true,
+        writable: true,
+        value: function hidePopover() {
+          if (!isPopoverOpen(this)) {
+            return;
+          }
+          const beforeToggleEvent = createToggleEvent('beforetoggle', 'open', 'closed', true);
+          if (!this.dispatchEvent(beforeToggleEvent)) {
+            return;
+          }
+          setPopoverOpen(this, false);
+          this.dispatchEvent(createToggleEvent('toggle', 'open', 'closed', false));
+        },
+      });
+
+      ObjectCtor.defineProperty(HTMLElementCtor.prototype, 'togglePopover', {
+        configurable: true,
+        writable: true,
+        value: function togglePopover() {
+          if (isPopoverOpen(this)) {
+            this.hidePopover();
+          } else {
+            this.showPopover();
+          }
+        },
+      });
+    }
+
+    defineArrayMethod('findLast', function findLast(predicate, thisArg) {
+      if (typeof predicate !== 'function') {
+        throw new TypeError('predicate must be a function');
+      }
+      for (let index = this.length - 1; index >= 0; --index) {
+        const value = this[index];
+        if (predicate.call(thisArg, value, index, this)) {
+          return value;
+        }
+      }
+      return undefined;
+    });
+
+    defineArrayMethod('findLastIndex', function findLastIndex(predicate, thisArg) {
+      if (typeof predicate !== 'function') {
+        throw new TypeError('predicate must be a function');
+      }
+      for (let index = this.length - 1; index >= 0; --index) {
+        if (predicate.call(thisArg, this[index], index, this)) {
+          return index;
+        }
+      }
+      return -1;
+    });
+
+    defineArrayMethod('toSorted', function toSorted(compareFn) {
+      const copy = toArrayCopy(this);
+      copy.sort(compareFn);
+      return copy;
+    });
+
+    defineArrayMethod('toReversed', function toReversed() {
+      const copy = toArrayCopy(this);
+      copy.reverse();
+      return copy;
+    });
+
+    defineArrayMethod('toSpliced', function toSpliced(start, deleteCount) {
+      const copy = toArrayCopy(this);
+      const items = ArrayCtor.prototype.slice.call(arguments, 2);
+      ArrayCtor.prototype.splice.call(copy, start, deleteCount, ...items);
+      return copy;
+    });
+
+    defineArrayMethod('with', function withValue(index, value) {
+      const copy = toArrayCopy(this);
+      const normalizedIndex = index < 0 ? copy.length + index : index;
+      if (normalizedIndex < 0 || normalizedIndex >= copy.length) {
+        throw new RangeErrorCtor('Index out of range');
+      }
+      copy[normalizedIndex] = value;
+      return copy;
+    });
+
+    if (!MapCtor.groupBy) {
+      ObjectCtor.defineProperty(MapCtor, 'groupBy', {
+        configurable: true,
+        writable: true,
+        value: function groupBy(items, callback) {
+          const result = new MapCtor();
+          let index = 0;
+          for (const item of items) {
+            const key = callback(item, index++);
+            const values = result.get(key);
+            if (values) {
+              values.push(item);
+            } else {
+              result.set(key, [item]);
+            }
+          }
+          return result;
+        },
+      });
+    }
+
+    if (!ObjectCtor.groupBy) {
+      ObjectCtor.defineProperty(ObjectCtor, 'groupBy', {
+        configurable: true,
+        writable: true,
+        value: function groupBy(items, callback) {
+          const result = ObjectCtor.create(null);
+          let index = 0;
+          for (const item of items) {
+            const key = callback(item, index++);
+            if (!ObjectCtor.prototype.hasOwnProperty.call(result, key)) {
+              result[key] = [];
+            }
+            result[key].push(item);
+          }
+          return result;
+        },
+      });
+    }
+
+    if (!ArrayCtor.fromAsync) {
+      ObjectCtor.defineProperty(ArrayCtor, 'fromAsync', {
+        configurable: true,
+        writable: true,
+        value: async function fromAsync(items, mapFn, thisArg) {
+          const result = [];
+          let index = 0;
+          for await (const item of items) {
+            const nextValue = mapFn ? await mapFn.call(thisArg, item, index) : item;
+            result.push(nextValue);
+            index += 1;
+          }
+          return result;
+        },
+      });
+    }
+  }
 
   // DevToolsAPI ----------------------------------------------------------------
 

@@ -6,16 +6,46 @@ const { execSync } = require('child_process');
 const os = require('os');
 const { detectOS, detectArch } = require('./fetch-depot-tools.js');
 
-// Change to devtools-frontend-lynx directory
-const devtoolsDir = path.join(__dirname, '..', 'packages', 'devtools-frontend-lynx');
+const projectRoot = path.join(__dirname, '..');
+const defaultDevtoolsDir = path.join(projectRoot, 'packages', 'devtools-frontend-lynx');
+
+function parseArgs(args) {
+    const options = {
+        mode: 'release',
+        frontendDir: process.env.LYNX_DEVTOOLS_FRONTEND_DIR || process.env.LYNX_DEVTOOLS_UPSTREAM_DIR || defaultDevtoolsDir,
+        skipBuild: process.env.LYNX_DEVTOOLS_SKIP_BUILD === '1'
+    };
+
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === '--frontend-dir' || arg === '--upstream-dir') {
+            options.frontendDir = path.resolve(args[++i]);
+        } else if (arg.startsWith('--frontend-dir=')) {
+            options.frontendDir = path.resolve(arg.slice('--frontend-dir='.length));
+        } else if (arg.startsWith('--upstream-dir=')) {
+            options.frontendDir = path.resolve(arg.slice('--upstream-dir='.length));
+        } else if (arg === '--skip-build') {
+            options.skipBuild = true;
+        } else if (!arg.startsWith('--')) {
+            options.mode = arg;
+        }
+    }
+
+    return options;
+}
+
+const buildOptions = parseArgs(process.argv.slice(2));
+const devtoolsDir = path.resolve(buildOptions.frontendDir);
 process.chdir(devtoolsDir);
 
 const currentDir = process.cwd();
+const isExternalFrontend = currentDir !== path.resolve(defaultDevtoolsDir);
 const OS_TYPE = detectOS();
 const ARCH = detectArch();
 
 console.log(`Detected OS: ${OS_TYPE}`);
 console.log(`Detected architecture: ${ARCH}`);
+console.log(`DevTools frontend directory: ${currentDir}`);
 
 function resolve(relativePath) {
     return path.join(currentDir, relativePath);
@@ -52,6 +82,11 @@ function runFetchDepotTools() {
 // Function to build devtools
 function buildDevtool(mode = 'release') {
     console.log(`\nPreparing build mode: ${mode}`);
+
+    if (isExternalFrontend) {
+        buildUpstreamDevtool();
+        return;
+    }
 
     // Ensure buildtools directory exists
     const buildtoolsDir = path.join('buildtools', OS_TYPE, 'gn');
@@ -176,51 +211,135 @@ function buildDevtool(mode = 'release') {
     }
 }
 
-// Function to copy static files and create output
-function copyStaticFilesToDir() {
-    const dirPath = path.join('out', 'Default', 'gen', 'front_end');
-    const pluginDir = path.join(dirPath, 'plugin');
-    const traceDir = path.join(dirPath, 'trace');
+function buildUpstreamDevtool() {
+    if (buildOptions.skipBuild) {
+        console.log('Skipping upstream frontend build because --skip-build was provided.');
+        return;
+    }
 
-    // Create directories
+    const packageJsonPath = resolve('package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+        throw new Error(`package.json not found in ${currentDir}`);
+    }
+
+    const env = {
+        ...process.env,
+        DEPOT_TOOLS_UPDATE: process.env.DEPOT_TOOLS_UPDATE || '0'
+    };
+    const depotToolsCandidates = [
+        process.env.DEPOT_TOOLS_PATH,
+        path.join(projectRoot, '..', 'depot_tools'),
+        path.join(currentDir, 'buildtools', 'depot_tools')
+    ].filter(Boolean);
+    const depotToolsPath = depotToolsCandidates.find(candidate => fs.existsSync(candidate));
+    if (depotToolsPath) {
+        env.PATH = `${depotToolsPath}${path.delimiter}${env.PATH}`;
+    }
+
+    runCommand('npm run build -- --target=Default', { cwd: currentDir, env });
+}
+
+function resolveStaticPath() {
+    const localStaticPath = resolve('static');
+    if (fs.existsSync(localStaticPath)) {
+        return localStaticPath;
+    }
+    return path.join(defaultDevtoolsDir, 'static');
+}
+
+function copyStaticAssets(staticPath, frontEndDir) {
+    if (!fs.existsSync(staticPath)) {
+        console.warn(`Static assets not found: ${staticPath}`);
+        return;
+    }
+
+    const pluginDir = path.join(frontEndDir, 'plugin');
+    const traceDir = path.join(frontEndDir, 'trace');
     fs.mkdirSync(pluginDir, { recursive: true });
     fs.mkdirSync(traceDir, { recursive: true });
 
-    const staticPath = resolve('static');
+    const pluginSrc = path.join(staticPath, 'plugin');
+    const traceSrc = path.join(staticPath, 'trace');
 
-    if (fs.existsSync(staticPath)) {
-        // Copy directories
-        const pluginSrc = path.join(staticPath, 'plugin');
-        const traceSrc = path.join(staticPath, 'trace');
+    if (fs.existsSync(pluginSrc)) {
+        copyRecursive(pluginSrc, pluginDir);
+    }
+    if (fs.existsSync(traceSrc)) {
+        copyRecursive(traceSrc, traceDir);
+    }
 
-        if (fs.existsSync(pluginSrc)) {
-            copyRecursive(pluginSrc, pluginDir);
+    const filesToCopy = [
+        'apexcharts.js',
+        'base64js.min.js',
+        'inflate.min.js',
+        'compare-versions.js'
+    ];
+
+    filesToCopy.forEach(file => {
+        const srcFile = path.join(staticPath, file);
+        const destFile = path.join(frontEndDir, file);
+        if (fs.existsSync(srcFile)) {
+            fs.copyFileSync(srcFile, destFile);
         }
-        if (fs.existsSync(traceSrc)) {
-            copyRecursive(traceSrc, traceDir);
+    });
+}
+
+function copyLegacyImageAssets(frontEndDir) {
+    const sourceDir = path.join(defaultDevtoolsDir, 'front_end', 'Images', 'src');
+    if (!fs.existsSync(sourceDir)) {
+        return;
+    }
+
+    const targetDir = path.join(frontEndDir, 'Images');
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+        if (!entry.isFile()) {
+            continue;
         }
+        const sourcePath = path.join(sourceDir, entry.name);
+        const targetPath = path.join(targetDir, entry.name);
+        if (!fs.existsSync(targetPath)) {
+            fs.copyFileSync(sourcePath, targetPath);
+        }
+    }
+}
 
-        // Copy files
-        const filesToCopy = [
-            'apexcharts.js',
-            'base64js.min.js',
-            'inflate.min.js',
-            'compare-versions.js'
-        ];
+function copyEntrypointHtml(genFrontEndDir, outputDir, timestamp, fileName) {
+    const src = path.join(genFrontEndDir, fileName);
+    const dest = path.join(outputDir, fileName);
+    if (!fs.existsSync(src)) {
+        return false;
+    }
 
-        filesToCopy.forEach(file => {
-            const srcFile = path.join(staticPath, file);
-            const destFile = path.join(dirPath, file);
-            if (fs.existsSync(srcFile)) {
-                fs.copyFileSync(srcFile, destFile);
-            }
-        });
+    fs.copyFileSync(src, dest);
+    let content = fs.readFileSync(dest, 'utf8');
+    content = content.replace(/\.\//g, `./front_end_${timestamp}/`);
+    fs.writeFileSync(dest, content);
+    return true;
+}
+
+function transpileOutputCss(targetDir) {
+    const scriptPath = path.join(projectRoot, 'scripts', 'transpile-devtools-css.js');
+    runCommand(`node "${scriptPath}" "${targetDir}"`, { cwd: projectRoot });
+}
+
+function patchRuntimeCompat(targetDir) {
+    const scriptPath = path.join(projectRoot, 'scripts', 'patch-devtools-runtime-compat.js');
+    runCommand(`node "${scriptPath}" "${targetDir}"`, { cwd: projectRoot });
+}
+
+// Function to copy static files and create output
+function copyStaticFilesToDir() {
+    const genFrontEndDir = path.join(currentDir, 'out', 'Default', 'gen', 'front_end');
+    if (!fs.existsSync(genFrontEndDir)) {
+        throw new Error(`Generated frontend directory not found: ${genFrontEndDir}`);
     }
 
     console.log(`Current directory: ${process.cwd()}`);
 
     // Remove existing output directory
-    const outputDir = 'output';
+    const outputDir = path.join(defaultDevtoolsDir, 'output');
     if (fs.existsSync(outputDir)) {
         fs.rmSync(outputDir, { recursive: true, force: true });
     }
@@ -232,36 +351,39 @@ function copyStaticFilesToDir() {
     fs.mkdirSync(frontEndTimestampDir, { recursive: true });
 
     // Copy generated front_end files
-    const genFrontEndDir = path.join('out', 'Default', 'gen', 'front_end');
-    if (fs.existsSync(genFrontEndDir)) {
-        copyRecursive(genFrontEndDir, frontEndTimestampDir);
+    copyRecursive(genFrontEndDir, frontEndTimestampDir);
+
+    const staticPath = resolveStaticPath();
+    copyStaticAssets(staticPath, frontEndTimestampDir);
+    copyLegacyImageAssets(frontEndTimestampDir);
+    transpileOutputCss(frontEndTimestampDir);
+
+    if (!isExternalFrontend) {
+        copyStaticAssets(staticPath, genFrontEndDir);
+        copyLegacyImageAssets(genFrontEndDir);
     }
 
-    // Copy inspector.html
-    const inspectorSrc = path.join('out', 'Default', 'gen', 'front_end', 'inspector.html');
-    const inspectorDest = path.join(outputDir, 'inspector.html');
-
-    if (fs.existsSync(inspectorSrc)) {
-        fs.copyFileSync(inspectorSrc, inspectorDest);
-
-        // Update paths in inspector.html
-        let content = fs.readFileSync(inspectorDest, 'utf8');
-        content = content.replace(/\.\//g, `./front_end_${timestamp}/`);
-        fs.writeFileSync(inspectorDest, content);
+    const packagedEntrypoints = ['inspector.html', 'devtools_app.html'].filter(fileName => {
+        return copyEntrypointHtml(genFrontEndDir, outputDir, timestamp, fileName);
+    });
+    if (!packagedEntrypoints.includes('inspector.html')) {
+        throw new Error('inspector.html not found for packaging');
     }
+
+    patchRuntimeCompat(frontEndTimestampDir);
 
     // Create tar.gz archive
     process.chdir(outputDir);
 
     const frontEndDir = `front_end_${timestamp}`;
-    const inspectorFile = 'inspector.html';
 
-    if (fs.existsSync(frontEndDir) && fs.existsSync(inspectorFile)) {
+    if (fs.existsSync(frontEndDir) && packagedEntrypoints.every(fileName => fs.existsSync(fileName))) {
         const archiveName = `devtool.frontend.lynx_1.0.${timestamp}.tar.gz`;
+        const archiveInputs = [...packagedEntrypoints, frontEndDir].map(fileName => `"${fileName}"`).join(' ');
 
         // Use tar command if available
         try {
-            runCommand(`tar -czf "${archiveName}" "${inspectorFile}" "${frontEndDir}"`);
+            runCommand(`tar -czf "${archiveName}" ${archiveInputs}`);
             console.log(`Created archive: ${archiveName}`);
         } catch (error) {
             console.warn('tar command failed, trying alternative archive method...');
@@ -298,7 +420,9 @@ function main(mode = 'release') {
         }
 
         // Run fetch depot tools first
-        runFetchDepotTools();
+        if (!isExternalFrontend) {
+            runFetchDepotTools();
+        }
 
         // Build devtools
         buildDevtool(mode);
@@ -314,8 +438,7 @@ function main(mode = 'release') {
 }
 
 if (require.main === module) {
-    const mode = process.argv[2] || 'release';
-    main(mode);
+    main(buildOptions.mode);
 }
 
 module.exports = { main, buildDevtool, copyStaticFilesToDir };
