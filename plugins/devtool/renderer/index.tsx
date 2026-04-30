@@ -55,6 +55,10 @@ export default definePlugin<AsyncBridgeType>((context) => {
   }
   props.landingPage = <ConnectionView />;
 
+  const resolveInspectUrl = async (inspectorType?: string) => {
+    return asyncBridge.getInspectUrl(inspectorType === 'web' ? 'web' : 'lynx');
+  };
+
   const Index = () => {
     const [devtoolProps, setDevtoolProps] = useState<IDevToolProps>(props);
     const { selectedDevice, deviceInfoMap, setDeviceInfoMap } = context.useConnection();
@@ -97,9 +101,7 @@ export default definePlugin<AsyncBridgeType>((context) => {
           sessions: deviceInfo?.sessions ?? []
         };
         try {
-          devtoolProps.inspectorUrl = await asyncBridge.getInspectUrl(
-            devtoolProps.inspectorType === 'web' ? 'web' : 'lynx'
-          );
+          devtoolProps.inspectorUrl = await resolveInspectUrl(devtoolProps.inspectorType);
         } catch (error) {
           console.error('Failed to get inspect URL:', error);
           // Set a default URL or keep the original URL
@@ -116,7 +118,7 @@ export default definePlugin<AsyncBridgeType>((context) => {
       debugDriver.on(EDebugDriverClientEventNames.ClientChange, onClientChange);
       debugDriver.on(EDebugDriverClientEventNames.SessionChange, onSessionChange);
       debugDriver.on(EDebugDriverClientEventNames.SessionWillChange, onSessionWillChange);
-      asyncBridge.getInspectUrl().then((url) => {
+      resolveInspectUrl(devtoolProps.inspectorType).then((url) => {
         devtoolProps.inspectorUrl = url || '';
         setDevtoolProps({ ...devtoolProps });
       }).catch((error) => {

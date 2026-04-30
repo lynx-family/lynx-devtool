@@ -90,7 +90,8 @@ function main() {
         // devtool frontend
         console.log('Setting up devtool frontend...');
         removeDir('dist/static');
-        ensureDir('dist/static/devtool/lynx');
+        const devtoolModes = ['lynx', 'web'];
+        devtoolModes.forEach(mode => ensureDir(`dist/static/devtool/${mode}`));
 
         // Find devtool frontend tar.gz file
         const resourcesDir = 'resources';
@@ -99,7 +100,9 @@ function main() {
             const devtoolTar = files.find(file => file.startsWith('devtool.frontend.lynx_') && file.endsWith('.tar.gz'));
 
             if (devtoolTar) {
-                extractTarGz(path.join(resourcesDir, devtoolTar), 'dist/static/devtool/lynx');
+                devtoolModes.forEach(mode => {
+                    extractTarGz(path.join(resourcesDir, devtoolTar), `dist/static/devtool/${mode}`);
+                });
             } else {
                 console.warn('DevTool frontend tar.gz not found');
             }

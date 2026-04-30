@@ -23,6 +23,26 @@ class App {
   mainPage: BasePage<any>;
   pages = new Map<number, BasePage<any>>();
 
+  private _bindWindowDebugLogs(win: BrowserWindow) {
+    win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      const location = sourceId ? `${sourceId}:${line}` : `line:${line}`;
+      const text = `[renderer-console:${level}] ${location} ${message}`;
+      if (level >= 2) {
+        defaultLogger.error(text);
+      } else if (level === 1) {
+        defaultLogger.warn(text);
+      } else if (sourceId?.includes('/localResource/devtool/')) {
+        defaultLogger.info(text);
+      }
+    });
+
+    win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      defaultLogger.error(
+        `[renderer-load-failed] code=${errorCode} mainFrame=${String(isMainFrame)} url=${validatedURL} error=${errorDescription}`
+      );
+    });
+  }
+
   // eslint-disable-next-line max-lines-per-function
   async init() {
     if (this.isDev) {
@@ -150,6 +170,7 @@ class App {
       this.progressBar = null;
     }
     if (this.win instanceof BrowserWindow) {
+      this._bindWindowDebugLogs(this.win);
       this.win.webContents.setWindowOpenHandler(({ url: link }: any) => {
         shell.openExternal(link);
         return { action: 'deny' };
@@ -235,4 +256,3 @@ class App {
 
 const ldt = new App();
 export default ldt;
-

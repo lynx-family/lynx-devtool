@@ -26,6 +26,15 @@ const disableCacheConfig = {
   cacheControl: false
 };
 
+function resolveCliStaticPath(resourceName: string) {
+  const candidates = [
+    path.resolve(__dirname, '../../../static', resourceName),
+    path.resolve(__dirname, '../../../dist/static', resourceName),
+    path.resolve(process.cwd(), 'dist/static', resourceName)
+  ];
+  return candidates.find(candidate => fs.existsSync(candidate)) || candidates[0];
+}
+
 class HttpServer {
   startPromise: Promise<string> | null = null;
   runningHost: string | null = null;
@@ -48,8 +57,10 @@ class HttpServer {
 
       const app = express();
       const filePath = utils.getUploadFilePath();
-      const devtoolPath = `${__dirname}/../../../static/devtool`;
-      const tracePath = `${__dirname}/../../../static/trace`;
+      const devtoolPath = resolveCliStaticPath('devtool');
+      const tracePath = resolveCliStaticPath('trace');
+      defaultLogger.info(`devtoolPath: ${devtoolPath}`);
+      defaultLogger.info(`tracePath: ${tracePath}`);
 
       // Set the save upload file path
       const storage = multer.diskStorage({

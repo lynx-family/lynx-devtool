@@ -30,6 +30,8 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
   const iframeElement = useRef<any>();
   const iframeOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
   const mainWindowOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
+  const iframeBootstrapRef = useRef<{ injectedKey?: string; openedKey?: string }>({});
+  const bootstrapRetryTimersRef = useRef<number[]>([]);
   const { debugDriver } = useContext(GlobalContext);
   const { sessionId, clientId, inspectorUrl, inspectorType, info, showPanels, plugins } = props;
 
@@ -73,6 +75,18 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
     }
   }, [props]);
 
+  const injectInspectorData = useCallback(() => {
+    sendGenericMessageToIframe('inject_data', {
+      info: info?.info ?? {},
+      plugins: plugins ?? []
+    });
+  }, [sendGenericMessageToIframe, info, plugins]);
+
+  const clearBootstrapRetries = useCallback(() => {
+    bootstrapRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    bootstrapRetryTimersRef.current = [];
+  }, []);
+
   const defaultLandingPage = () => {
     if (!clientId || clientId <= 0) {
       return <Empty description="Please connect device" />;
@@ -106,18 +120,16 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
         // Initialize data, dynamic plugin configuration
         case 'iframe_init':
           console.log('iframe init', event);
-          sendGenericMessageToIframe('inject_data', {
-            info: info?.info ?? {},
-            plugins: plugins ?? []
-          });
+          ensureInjectedData();
           break;
         // Compatible with webview inspector interface
         case 'iframe_loaded':
           console.log('iframe loaded', event);
-          lynxOpen();
+          ensureLynxOpen();
           break;
         // Call lynx communication interface to forward messages
         case 'send_message':
+          clearBootstrapRetries();
           debugDriver.sendCustomMessage({
             type: content.type,
             clientId,
@@ -153,6 +165,10 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
     }
     mainWindowOnMessageRef.current = { onMessage: mainWindowOnMessage };
     window.parent.addEventListener('message', mainWindowOnMessage);
+
+    // Chromium 7724 can post iframe_loaded/iframe_init before the outer shell
+    // starts listening. Finish the parent -> iframe handshake explicitly here.
+    scheduleBootstrapHandshake();
   };
 
   const inspectUrl = useMemo(() => {
@@ -162,6 +178,45 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
       ','
     )}&sdkVersion=${info?.info?.sdkVersion}`;
   }, [clientId, sessionId, inspectorType, inspectorUrl, showPanels, info]);
+  const canRenderInspectFrame = useMemo(() => {
+    return clientId > 0 && sessionId > 0 && Boolean(inspectorUrl);
+  }, [clientId, inspectorUrl, sessionId]);
+
+  const iframeBootstrapKey = useMemo(() => {
+    return `${clientId}:${sessionId}:${inspectUrl}`;
+  }, [clientId, sessionId, inspectUrl]);
+
+  const ensureInjectedData = useCallback(() => {
+    if (iframeBootstrapRef.current.injectedKey === iframeBootstrapKey) {
+      return;
+    }
+    injectInspectorData();
+    iframeBootstrapRef.current.injectedKey = iframeBootstrapKey;
+  }, [iframeBootstrapKey, injectInspectorData]);
+
+  const ensureLynxOpen = useCallback(() => {
+    if (iframeBootstrapRef.current.openedKey === iframeBootstrapKey) {
+      return;
+    }
+    lynxOpen();
+    iframeBootstrapRef.current.openedKey = iframeBootstrapKey;
+  }, [iframeBootstrapKey, lynxOpen]);
+
+  const scheduleBootstrapHandshake = useCallback(() => {
+    clearBootstrapRetries();
+    [0, 80, 200, 500, 1200].forEach((delay) => {
+      const timer = window.setTimeout(() => {
+        injectInspectorData();
+        lynxOpen();
+      }, delay);
+      bootstrapRetryTimersRef.current.push(timer);
+    });
+  }, [clearBootstrapRetries, injectInspectorData, lynxOpen]);
+
+  useEffect(() => {
+    iframeBootstrapRef.current = {};
+    clearBootstrapRetries();
+  }, [inspectUrl, clearBootstrapRetries]);
 
   useEffect(() => {
     const onInspectMessage = (_: any, data: any) => {
@@ -178,13 +233,14 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
       if (mainWindowOnMessageRef.current?.onMessage) {
         window.parent?.removeEventListener('message', mainWindowOnMessageRef.current.onMessage);
       }
+      clearBootstrapRetries();
       window.ldtElectronAPI?.off('inspect-devtool-message', onInspectMessage);
     };
-  }, [clientId, sessionId, inspectorType, inspectorUrl]);
+  }, [clientId, sessionId, inspectorType, inspectorUrl, clearBootstrapRetries]);
 
   return (
-    <div style={{ height: '100%', width: '100%' }}>
-      {clientId > 0 && sessionId > 0 ? (
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+      {canRenderInspectFrame ? (
         <iframe
           key={`${clientId}-${sessionId}`}
           style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
@@ -192,6 +248,10 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
           onLoad={onLoad}
           src={inspectUrl}
         />
+      ) : clientId > 0 && sessionId > 0 ? (
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Spin />
+        </div>
       ) : (
         props.landingPage || (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

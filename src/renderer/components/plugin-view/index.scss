@@ -3,7 +3,7 @@
   flex: auto;
   border-left: 1px solid #ccc;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .base-component {
@@ -14,11 +14,13 @@
 
 .overlay-component {
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
+  inset: 0;
+  overflow: hidden;
+}
+
+.plugin-container {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
 }
