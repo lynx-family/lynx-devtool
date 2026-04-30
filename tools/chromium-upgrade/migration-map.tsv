@@ -1,0 +1,21 @@
+category	status	priority	local_path	upstream_path	notes
+transport	rebase	P0	packages/devtools-frontend-lynx/front_end/core/sdk/Connections.ts	front_end/core/sdk/Connections.ts	Upstream switched to ConnectionTransport and session router abstractions; LynxConnection must rebase here.
+host	rebase	P0	packages/devtools-frontend-lynx/front_end/core/host/InspectorFrontendHost.ts	front_end/core/host/InspectorFrontendHost.ts	Keep Lynx embedder bridge and statistics helpers on top of the new host API.
+host_api	rebase	P0	packages/devtools-frontend-lynx/front_end/core/host/InspectorFrontendHostAPI.ts	front_end/core/host/InspectorFrontendHostAPI.ts	Reconcile event shape changes such as DispatchMessageChunk and ReattachMainTarget.
+embedder	rebase	P0	packages/devtools-frontend-lynx/front_end/devtools_compatibility.js	front_end/devtools_compatibility.js	Hosted-mode and embedder shims must be ported carefully.
+protocol_client	rebase	P0	packages/devtools-frontend-lynx/front_end/core/protocol_client/InspectorBackend.ts	front_end/core/protocol_client/InspectorBackend.ts	Reapply plugin bridge and env log helpers onto the new CDPConnection architecture.
+protocol_source	rebase	P0	packages/devtools-frontend-lynx/v8/include/js_protocol.pdl	v8/include/js_protocol.pdl	Add Lynx domain and Debugger.removeScriptsForLynxView here first.
+generated_protocol	derived	P0	packages/devtools-frontend-lynx/front_end/generated/InspectorBackendCommands.js	n/a	Regenerate from protocol sources; do not hand-port.
+generated_protocol	derived	P0	packages/devtools-frontend-lynx/front_end/generated/protocol-proxy-api.d.ts	n/a	Regenerate from protocol sources; do not hand-port.
+generated_protocol	derived	P0	packages/devtools-frontend-lynx/front_end/generated/protocol-mapping.d.ts	n/a	Regenerate from protocol sources; do not hand-port.
+generated_protocol	derived	P0	packages/devtools-frontend-lynx/front_end/generated/protocol.d.ts	n/a	Regenerate from protocol sources; do not hand-port.
+debugger	rebase	P0	packages/devtools-frontend-lynx/front_end/core/sdk/DebuggerModel.ts	front_end/core/sdk/DebuggerModel.ts	Reapply shared-context cleanup and Lynx view teardown hooks.
+tracing	moved	P0	packages/devtools-frontend-lynx/front_end/core/sdk/TracingManager.ts	front_end/services/tracing/TracingManager.ts	Tracing moved out of core/sdk in upstream chromium/7724.
+screencast	rebase	P0	packages/devtools-frontend-lynx/front_end/panels/screencast/ScreencastView.ts	front_end/panels/screencast/ScreencastView.ts	Reapply UI tree plugin bridge and LynxView/fullscreen mode.
+settings	rebase	P1	packages/devtools-frontend-lynx/front_end/core/sdk/sdk-meta.ts	front_end/core/sdk/sdk-meta.ts	Keep screencastFPS and showLynxSharedContextSources or redesign if upstream has better knobs.
+entrypoint	rebase	P1	packages/devtools-frontend-lynx/front_end/entrypoints/main/MainImpl.ts	front_end/entrypoints/main/MainImpl.ts	Keep only essential loading progress instrumentation in the first pass.
+custom_panel	custom_only	P1	packages/devtools-frontend-lynx/front_end/panels/preact_devtools/preact_devtools-meta.ts	n/a	No upstream equivalent found in chromium/7724; keep as a custom panel.
+custom_panel	custom_only	P1	packages/devtools-frontend-lynx/front_end/panels/preact_devtools/PreactDevtoolsPanel.ts	n/a	No upstream equivalent found in chromium/7724; keep as a custom panel.
+plugin_bridge	product_layer	P1	plugins/devtool/renderer/devtool/index.tsx	n/a	Product-side iframe bridge; adapt after transport is stable.
+packaging	product_layer	P1	scripts/build-lynx-devtools.js	n/a	Local packaging glue; likely needs rewrite against new upstream output.
+packaging	product_layer	P1	packages/lynx-devtool-cli/src/cli/command/httpServer.ts	n/a	Keep static serving route but verify new artifact layout.

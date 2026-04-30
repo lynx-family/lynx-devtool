@@ -1,0 +1,18 @@
+# pattern	description
+removeScriptsForLynxView	Debugger lifecycle cleanup for per-view script and source map teardown.
+Lynx\.getComponentId	Custom Lynx protocol method used by the frontend.
+Lynx\.getProperties	Custom Lynx protocol method used by the frontend.
+Lynx\.getData	Custom Lynx protocol method used by the frontend.
+Lynx\.setTraceMode	Custom Lynx protocol method for trace mode switching.
+LynxConnection	Custom transport implementation in the current fork.
+postPluginMessage	Custom plugin bridge from DevTools frontend into product-side extensions.
+addPluginEventListener	Custom plugin event listener bridge from product-side events into DevTools frontend.
+dispatchMessageChunk	Custom host event used for chunked backend message delivery.
+reattachMainTarget	Custom host event used to rebuild the main target.
+showLynxSharedContextSources	Custom debugger/source visibility setting.
+screencastFPS	Custom screencast setting.
+lynx_open	Product-to-frontend bootstrap message for a Lynx session.
+lynx_message	Product-to-frontend message envelope carrying CDP and plugin traffic.
+send_message	Frontend-to-product outbound message envelope.
+devtool_stats	Product statistics bridge.
+a11y_mark_lynx	Accessibility or overlay side channel for Lynx-specific actions.
