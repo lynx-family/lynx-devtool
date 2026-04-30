@@ -112,6 +112,21 @@ or just call `make all`
 - React
 - Chrome DevTools Protocol
 
+## Engineering Notes
+
+- **Chromium/DevTools upgrade overview（背景介绍、架构关系、快速入门）**：
+  [`docs/chromium-upgrade-overview.zh-CN.md`](docs/chromium-upgrade-overview.zh-CN.md)
+- Chromium/DevTools upgrade analysis and AI handoff:
+  [`docs/chromium-upgrade-analysis.md`](docs/chromium-upgrade-analysis.md)
+- Chromium/DevTools upgrade plan:
+  [`docs/chromium-upgrade-plan.zh-CN.md`](docs/chromium-upgrade-plan.zh-CN.md)
+- Chromium/DevTools upgrade execution status:
+  [`docs/chromium-upgrade-execution-status.zh-CN.md`](docs/chromium-upgrade-execution-status.zh-CN.md)
+- Chromium/DevTools feature preservation matrix:
+  [`docs/chromium-upgrade-feature-preservation.zh-CN.md`](docs/chromium-upgrade-feature-preservation.zh-CN.md)
+- Chromium/DevTools upgrade helper tools:
+  [`tools/chromium-upgrade/README.md`](tools/chromium-upgrade/README.md)
+
 ## Contributing
 
 1. Fork this repository
