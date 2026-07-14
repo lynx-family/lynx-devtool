@@ -512,6 +512,13 @@ export function registerCommands(inspectorBackend) {
       ],
       ['containerQuery']);
   inspectorBackend.registerCommand(
+      'CSS.setSupportsText',
+      [
+        {'name': 'styleSheetId', 'type': 'string', 'optional': false},
+        {'name': 'range', 'type': 'object', 'optional': false}, {'name': 'text', 'type': 'string', 'optional': false}
+      ],
+      ['supports']);
+  inspectorBackend.registerCommand(
       'CSS.setRuleSelector',
       [
         {'name': 'styleSheetId', 'type': 'string', 'optional': false},

@@ -466,6 +466,26 @@ export class CSSModel extends SDKModel {
     }
   }
 
+  async setSupportsText(styleSheetId: string, range: TextUtils.TextRange.TextRange, newSupportsText: string):
+      Promise<boolean> {
+    Host.userMetrics.actionTaken(Host.UserMetrics.Action.StyleRuleEdited);
+
+    try {
+      await this._ensureOriginalStyleSheetText(styleSheetId);
+      const {supports} = await this._agent.invoke_setSupportsText({styleSheetId, range, text: newSupportsText});
+
+      if (!supports) {
+        return false;
+      }
+      this._domModel.markUndoableState();
+      const edit = new Edit(styleSheetId, range, newSupportsText, supports);
+      this._fireStyleSheetChanged(styleSheetId, edit);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async addRule(styleSheetId: string, ruleText: string, ruleLocation: TextUtils.TextRange.TextRange):
       Promise<CSSStyleRule|null> {
     try {
