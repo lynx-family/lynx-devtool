@@ -89,6 +89,7 @@ export async function setupResource(
       kCliPackageName
     );
     const homeCnDir = path.resolve(ldtPath, "dist/static/ldt_home");
+    const pluginDir = path.resolve(ldtPath, "dist/static/ldt_home/dist/plugins");
 
     defaultLogger.info(`ldtPath: ${ldtPath}`);
     
@@ -107,6 +108,11 @@ export async function setupResource(
 
     // handle the path in dev mode, must copy the resources from the source code
     if (!isPackagedApp) {
+
+      if (fs.existsSync(pluginDir)) {
+        fs.cpSync(pluginDir, path.resolve(ldtPath, "..", 'plugins'), { recursive: true });
+      }
+
       fs.rmSync(ldtPath, { recursive: true, force: true });
 
       defaultLogger.info(`=== updator: Update dev Static Resources ===`);
@@ -164,6 +170,12 @@ export async function setupResource(
       } else {
         defaultLogger.warn(`Web source path not found: ${webSourcePath}`);
       }
+
+      if (fs.existsSync(path.resolve(ldtPath, "..", 'plugins'))) {
+        fs.cpSync(path.resolve(ldtPath, "..", 'plugins'), pluginDir, { recursive: true });
+        fs.rmSync(path.resolve(ldtPath, "..", 'plugins'), { recursive: true, force: true });
+      }
+
     } else {
       let resVersion = "",
         resType = "dev";
