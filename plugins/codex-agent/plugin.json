@@ -1,0 +1,11 @@
+{
+  "id": "codex-agent",
+  "name": "Codex",
+  "description": "AI Coding Agent powered by Codex",
+  "isInternal": true,
+  "mode": "radio",
+  "target": "all",
+  "priority": 10,
+  "hasView": true,
+  "visible": true
+}
