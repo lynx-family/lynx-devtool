@@ -88,7 +88,12 @@
 }
 
 .screencast-navigation button.reload {
+  display: flex;
+  align-items: center;
+  width: auto;
+  padding: 2px 8px 2px 2px;
   background-position-x: -37px;
+  cursor: pointer;
 }
 
 .screencast-navigation input {
@@ -124,6 +129,7 @@
   outline: none;
   -webkit-appearance: none;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .screencast-navigation input.switch-component::after {
