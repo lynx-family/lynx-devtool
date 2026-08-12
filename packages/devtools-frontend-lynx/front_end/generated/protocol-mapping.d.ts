@@ -977,6 +977,11 @@ export namespace ProtocolMapping {
     'CSS.getStyleSheetText':
         {paramsType: [Protocol.CSS.GetStyleSheetTextRequest]; returnType: Protocol.CSS.GetStyleSheetTextResponse;};
     /**
+     * Returns all layers parsed by the rendering engine for the tree scope of a node.
+     */
+    'CSS.getLayersForNode':
+        {paramsType: [Protocol.CSS.GetLayersForNodeRequest]; returnType: Protocol.CSS.GetLayersForNodeResponse;};
+    /**
      * Starts tracking the given computed styles for updates. The specified array of properties
      * replaces the one previously specified. Pass empty array to disable tracking.
      * Use takeComputedStyleUpdates to retrieve the list of nodes that had properties modified.

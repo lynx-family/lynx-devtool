@@ -14,6 +14,7 @@ import { reportToStatistics } from '../host/InspectorFrontendHost.js';
 import { envLogger } from '../protocol_client/InspectorBackend.js';
 
 import {CSSContainerQuery} from './CSSContainerQuery.js';
+import {CSSLayer} from './CSSLayer.js';
 import {CSSMedia} from './CSSMedia.js';
 import {CSSSupports} from './CSSSupports.js';
 
@@ -118,6 +119,7 @@ export class CSSStyleRule extends CSSRule {
   media: CSSMedia[];
   containerQueries: CSSContainerQuery[];
   supports: CSSSupports[];
+  layers: CSSLayer[];
   wasUsed: boolean;
   constructor(cssModel: CSSModel, payload: Protocol.CSS.CSSRule, wasUsed?: boolean) {
     // TODO(crbug.com/1011811): Replace with spread operator or better types once Closure is gone.
@@ -128,6 +130,7 @@ export class CSSStyleRule extends CSSRule {
         CSSContainerQuery.parseContainerQueriesPayload(cssModel, payload.containerQueries) :
         [];
     this.supports = payload.supports ? CSSSupports.parseSupportsPayload(cssModel, payload.supports) : [];
+    this.layers = payload.layers ? CSSLayer.parseLayerPayload(cssModel, payload.layers) : [];
     this.wasUsed = wasUsed || false;
   }
 
