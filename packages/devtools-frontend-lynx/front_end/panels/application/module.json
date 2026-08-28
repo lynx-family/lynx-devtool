@@ -22,6 +22,7 @@
     "serviceWorkersView.css",
     "serviceWorkerUpdateCycleView.css",
     "cookieItemsView.css",
-    "frameDetailsReportView.css"
+    "frameDetailsReportView.css",
+    "globalPropsView.css"
   ]
 }

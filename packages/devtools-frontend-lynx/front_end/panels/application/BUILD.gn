@@ -18,13 +18,15 @@ devtools_module("application") {
     "BackgroundServiceModel.ts",
     "BackgroundServiceView.ts",
     "CookieItemsView.ts",
-    "DOMStorageItemsView.ts",
-    "DOMStorageModel.ts",
     "DatabaseModel.ts",
     "DatabaseQueryView.ts",
     "DatabaseTableView.ts",
+    "DOMStorageItemsView.ts",
+    "DOMStorageModel.ts",
+    "GlobalPropsView.ts",
     "IndexedDBModel.ts",
     "IndexedDBViews.ts",
+    "LynxApplication.ts",
     "OpenedWindowDetailsView.ts",
     "ResourcesPanel.ts",
     "ServiceWorkerCacheViews.ts",
@@ -82,7 +84,10 @@ devtools_entrypoint("bundle") {
 }
 
 copy_to_gen("legacy_css") {
-  sources = [ "serviceWorkerUpdateCycleView.css" ]
+  sources = [
+    "globalPropsView.css",
+    "serviceWorkerUpdateCycleView.css",
+  ]
 }
 
 devtools_entrypoint("legacy") {

@@ -264,6 +264,7 @@ all_devtools_files = [
   "front_end/panels/application/storageView.css",
   "front_end/panels/application/cookieItemsView.css",
   "front_end/panels/application/frameDetailsReportView.css",
+  "front_end/panels/application/globalPropsView.css",
   "front_end/panels/application/indexedDBViews.css",
   "front_end/panels/application/module.json",
   "front_end/panels/application/resourcesPanel.css",

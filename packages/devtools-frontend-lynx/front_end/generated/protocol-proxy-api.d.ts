@@ -109,6 +109,8 @@ declare namespace ProtocolProxyApi {
 
     Runtime: RuntimeApi;
 
+    GlobalProps: GlobalPropsApi;
+
     Lynx: LynxApi;
 
     Schema: SchemaApi;
@@ -202,6 +204,8 @@ declare namespace ProtocolProxyApi {
     Profiler: ProfilerDispatcher;
 
     Runtime: RuntimeDispatcher;
+
+    GlobalProps: GlobalPropsDispatcher;
 
     Lynx: LynxDispatcher;
 
@@ -4036,6 +4040,20 @@ declare namespace ProtocolProxyApi {
      * call).
      */
     inspectRequested(params: Protocol.Runtime.InspectRequestedEvent): void;
+  }
+
+  export interface GlobalPropsApi {
+    invoke_enable(): Promise<Protocol.ProtocolResponseWithError>;
+
+    invoke_disable(): Promise<Protocol.ProtocolResponseWithError>;
+
+    invoke_get(): Promise<Protocol.GlobalProps.GetResponse>;
+
+    invoke_replace(params: Protocol.GlobalProps.ReplaceRequest): Promise<Protocol.ProtocolResponseWithError>;
+  }
+
+  export interface GlobalPropsDispatcher {
+    changed(params: Protocol.GlobalProps.ChangedEvent): void;
   }
 
   export interface LynxApi {
