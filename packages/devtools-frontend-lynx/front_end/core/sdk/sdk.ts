@@ -23,6 +23,7 @@ import * as CPUProfilerModel from './CPUProfilerModel.js';
 import * as CPUThrottlingManager from './CPUThrottlingManager.js';
 import * as CSSContainerQuery from './CSSContainerQuery.js';
 import * as CSSFontFace from './CSSFontFace.js';
+import * as CSSLayer from './CSSLayer.js';
 import * as CSSMatchedStyles from './CSSMatchedStyles.js';
 import * as CSSMedia from './CSSMedia.js';
 import * as CSSMetadata from './CSSMetadata.js';
@@ -89,6 +90,7 @@ export {
   CPUThrottlingManager,
   CSSContainerQuery,
   CSSFontFace,
+  CSSLayer,
   CSSMatchedStyles,
   CSSMedia,
   CSSMetadata,
