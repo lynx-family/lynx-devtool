@@ -681,6 +681,7 @@ export namespace ProtocolMapping {
      * call).
      */
     'Runtime.inspectRequested': [Protocol.Runtime.InspectRequestedEvent];
+    'GlobalProps.changed': [Protocol.GlobalProps.ChangedEvent];
   }
 
   export interface Commands {
@@ -3064,6 +3065,10 @@ export namespace ProtocolMapping {
      * unsubscribes current runtime agent from Runtime.bindingCalled notifications.
      */
     'Runtime.removeBinding': {paramsType: [Protocol.Runtime.RemoveBindingRequest]; returnType: void;};
+    'GlobalProps.enable': {paramsType: []; returnType: void;};
+    'GlobalProps.disable': {paramsType: []; returnType: void;};
+    'GlobalProps.get': {paramsType: []; returnType: Protocol.GlobalProps.GetResponse;};
+    'GlobalProps.replace': {paramsType: [Protocol.GlobalProps.ReplaceRequest]; returnType: void;};
     'Lynx.getComponentId':
         {paramsType: [Protocol.Lynx.GetComponentIdRequest]; returnType: Protocol.Lynx.GetComponentIdResponse;};
     'Lynx.getProperties':

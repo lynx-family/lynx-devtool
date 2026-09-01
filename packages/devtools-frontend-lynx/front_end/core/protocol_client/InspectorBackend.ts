@@ -760,6 +760,10 @@ export class TargetBase {
     return this.getAgent('Emulation');
   }
 
+  globalPropsAgent(): ProtocolProxyApi.GlobalPropsApi {
+    return this.getAgent('GlobalProps');
+  }
+
   heapProfilerAgent(): ProtocolProxyApi.HeapProfilerApi {
     return this.getAgent('HeapProfiler');
   }
@@ -917,6 +921,14 @@ export class TargetBase {
 
   registerDOMStorageDispatcher(dispatcher: ProtocolProxyApi.DOMStorageDispatcher): void {
     this.registerDispatcher('DOMStorage', dispatcher);
+  }
+
+  registerGlobalPropsDispatcher(dispatcher: ProtocolProxyApi.GlobalPropsDispatcher): void {
+    this.registerDispatcher('GlobalProps', dispatcher);
+  }
+
+  unregisterGlobalPropsDispatcher(dispatcher: ProtocolProxyApi.GlobalPropsDispatcher): void {
+    this.unregisterDispatcher('GlobalProps', dispatcher);
   }
 
   registerHeapProfilerDispatcher(dispatcher: ProtocolProxyApi.HeapProfilerDispatcher): void {

@@ -3360,6 +3360,14 @@ export function registerCommands(inspectorBackend) {
   inspectorBackend.registerCommand(
       'Runtime.removeBinding', [{'name': 'name', 'type': 'string', 'optional': false}], []);
 
+  // GlobalProps.
+  inspectorBackend.registerEvent('GlobalProps.changed', ['timestamp', 'changes']);
+  inspectorBackend.registerCommand('GlobalProps.enable', [], []);
+  inspectorBackend.registerCommand('GlobalProps.disable', [], []);
+  inspectorBackend.registerCommand('GlobalProps.get', [], ['globalProps', 'timestamp']);
+  inspectorBackend.registerCommand(
+      'GlobalProps.replace', [{'name': 'globalProps', 'type': 'object', 'optional': false}], []);
+
   // Lynx.
   inspectorBackend.registerCommand(
       'Lynx.getComponentId', [{'name': 'nodeId', 'type': 'number', 'optional': false}], ['componentId']);

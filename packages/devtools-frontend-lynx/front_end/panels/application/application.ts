@@ -14,8 +14,10 @@ import * as DatabaseQueryView from './DatabaseQueryView.js';
 import * as DatabaseTableView from './DatabaseTableView.js';
 import * as DOMStorageItemsView from './DOMStorageItemsView.js';
 import * as DOMStorageModel from './DOMStorageModel.js';
+import * as GlobalPropsView from './GlobalPropsView.js';
 import * as IndexedDBModel from './IndexedDBModel.js';
 import * as IndexedDBViews from './IndexedDBViews.js';
+import * as LynxApplication from './LynxApplication.js';
 import * as OpenedWindowDetailsView from './OpenedWindowDetailsView.js';
 import * as ResourcesPanel from './ResourcesPanel.js';
 import * as ServiceWorkerCacheViews from './ServiceWorkerCacheViews.js';
@@ -37,8 +39,10 @@ export {
   DatabaseTableView,
   DOMStorageItemsView,
   DOMStorageModel,
+  GlobalPropsView,
   IndexedDBModel,
   IndexedDBViews,
+  LynxApplication,
   OpenedWindowDetailsView,
   ResourcesPanel,
   ServiceWorkerCacheViews,

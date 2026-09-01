@@ -1679,6 +1679,35 @@ domain Runtime
       RemoteObject object
       object hints
 
+domain GlobalProps
+  type Change extends object
+    properties
+      string operation
+        enum
+          set
+          remove
+          replace
+      optional string key
+      optional any value
+
+  command enable
+
+  command disable
+
+  command get
+    returns
+      object globalProps
+      number timestamp
+
+  command replace
+    parameters
+      object globalProps
+
+  event changed
+    parameters
+      number timestamp
+      array of Change changes
+
 domain Lynx
   command getComponentId
     parameters

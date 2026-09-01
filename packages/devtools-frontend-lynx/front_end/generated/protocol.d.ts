@@ -16396,6 +16396,34 @@ declare namespace Protocol {
     }
   }
 
+  export namespace GlobalProps {
+    export const enum ChangeOperation {
+      Set = 'set',
+      Remove = 'remove',
+      Replace = 'replace',
+    }
+
+    export interface Change {
+      operation: ChangeOperation;
+      key?: string;
+      value?: any;
+    }
+
+    export interface GetResponse extends ProtocolResponseWithError {
+      globalProps: object;
+      timestamp: number;
+    }
+
+    export interface ReplaceRequest {
+      globalProps: object;
+    }
+
+    export interface ChangedEvent {
+      timestamp: number;
+      changes: Change[];
+    }
+  }
+
   export namespace Lynx {
 
     export interface GetComponentIdRequest {

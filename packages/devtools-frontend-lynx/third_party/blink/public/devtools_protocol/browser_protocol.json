@@ -24258,6 +24258,84 @@
             ]
         },
         {
+            "domain": "GlobalProps",
+            "types": [
+                {
+                    "id": "Change",
+                    "type": "object",
+                    "properties": [
+                        {
+                            "name": "operation",
+                            "type": "string",
+                            "enum": [
+                                "set",
+                                "remove",
+                                "replace"
+                            ]
+                        },
+                        {
+                            "name": "key",
+                            "optional": true,
+                            "type": "string"
+                        },
+                        {
+                            "name": "value",
+                            "optional": true,
+                            "type": "any"
+                        }
+                    ]
+                }
+            ],
+            "commands": [
+                {
+                    "name": "enable"
+                },
+                {
+                    "name": "disable"
+                },
+                {
+                    "name": "get",
+                    "returns": [
+                        {
+                            "name": "globalProps",
+                            "type": "object"
+                        },
+                        {
+                            "name": "timestamp",
+                            "type": "number"
+                        }
+                    ]
+                },
+                {
+                    "name": "replace",
+                    "parameters": [
+                        {
+                            "name": "globalProps",
+                            "type": "object"
+                        }
+                    ]
+                }
+            ],
+            "events": [
+                {
+                    "name": "changed",
+                    "parameters": [
+                        {
+                            "name": "timestamp",
+                            "type": "number"
+                        },
+                        {
+                            "name": "changes",
+                            "type": "array",
+                            "items": {
+                                "$ref": "Change"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "domain": "Lynx",
             "commands": [
                 {
