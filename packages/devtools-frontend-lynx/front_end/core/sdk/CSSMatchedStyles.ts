@@ -425,6 +425,52 @@ export class CSSMatchedStyles {
   }
 }
 
+// Returns a stable identifier for the author cascade layer a declaration lives in,
+// or null when the declaration does not take part in author layer ordering (user
+// agent rules, inline styles, non-style rules). An empty string means the author
+// declaration is unlayered.
+function cascadeLayerKey(property: CSSProperty): string|null {
+  const rule = property.ownerStyle.parentRule;
+  if (!(rule instanceof CSSStyleRule) || !rule.isRegular()) {
+    return null;
+  }
+  if (!rule.layers.length) {
+    return '';
+  }
+  return rule.layers
+      .map(layer => {
+        if (layer.text) {
+          return `named:${layer.text}`;
+        }
+        const range = layer.range;
+        if (range) {
+          return `anonymous:${layer.styleSheetId || ''}:${range.startLine}:${range.startColumn}:${range.endLine}:${
+              range.endColumn}`;
+        }
+        return 'anonymous';
+      })
+      .join('/');
+}
+
+// For `!important` declarations the cascade-layer order is reversed: a declaration
+// in an earlier-declared layer wins over one in a later-declared layer, and any
+// layered `!important` wins over an unlayered one. Properties are processed here in
+// descending normal-cascade priority, so when two `!important` author declarations
+// come from different layers the one encountered later (weaker in the normal order,
+// i.e. the earlier layer) must win instead. See
+// https://www.w3.org/TR/css-cascade-5/#layer-ordering
+function winsByImportantLayerOrder(property: CSSProperty, activeProperty: CSSProperty): boolean {
+  if (!property.important || !activeProperty.important) {
+    return false;
+  }
+  const propertyLayer = cascadeLayerKey(property);
+  const activeLayer = cascadeLayerKey(activeProperty);
+  if (propertyLayer === null || activeLayer === null) {
+    return false;
+  }
+  return propertyLayer !== activeLayer;
+}
+
 class NodeCascade {
   _matchedStyles: CSSMatchedStyles;
   _styles: CSSStyleDeclaration[];
@@ -485,7 +531,8 @@ class NodeCascade {
         }
 
         const activeProperty = this._activeProperties.get(canonicalName);
-        if (activeProperty && (activeProperty.important || !property.important)) {
+        if (activeProperty && !winsByImportantLayerOrder(property, activeProperty) &&
+            (activeProperty.important || !property.important)) {
           this._propertiesState.set(property, PropertyState.Overloaded);
           continue;
         }
