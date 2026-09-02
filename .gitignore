@@ -65,3 +65,7 @@ devtool.frontend.web_1.0.*.tar.gz
 
 # Ignore Lynx Trace output
 lynx-trace.tar.gz
+
+.cipd/
+.gclient_entries
+.gclient_previous_sync_commits
