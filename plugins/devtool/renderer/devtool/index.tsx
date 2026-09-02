@@ -11,6 +11,55 @@ import { devtoolActionHandler, getCdpMessageDispatcher, getPluginDriver } from '
 import { IDeviceInfo, InspectorType } from './types';
 import { Empty, Spin } from 'antd';
 
+const CODEX_CONTEXT_STORAGE_KEY = 'lynx-devtool:codex-context';
+const CODEX_CONTEXT_EVENT_NAME = 'lynx-devtool:codex-context';
+
+type CodexContextPayload = {
+  id?: string;
+  label?: string;
+  text?: string;
+  createdAt?: number;
+  autoSend?: boolean;
+  source?: string;
+};
+
+type CodexContextInput =
+  | string
+  | (CodexContextPayload & {
+      includeBaseContext?: boolean;
+    });
+
+function parseStoredCodexPayloads(rawPayloads: string | null): CodexContextPayload[] {
+  if (!rawPayloads) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawPayloads) as CodexContextPayload | CodexContextPayload[];
+    const payloads = Array.isArray(parsed) ? parsed : [parsed];
+    return payloads.filter((payload) => typeof payload?.text === 'string' && payload.text.trim().length > 0);
+  } catch (_) {
+    return [];
+  }
+}
+
+function createCodexContextId() {
+  return `codex-context-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function labelForCodexContextSource(source?: string) {
+  switch (source) {
+    case 'elements-selection':
+      return 'Elements context';
+    case 'console-selection':
+      return 'Console context';
+    case 'devtool-panel':
+      return 'DevTool context';
+    default:
+      return 'Context';
+  }
+}
+
 export interface IDevToolProps {
   clientId: number;
   sessionId: number;
@@ -24,13 +73,18 @@ export interface IDevToolProps {
   inspectorUrl?: string;
   // TODO: type def use common packages
   plugins?: Record<string, any>[];
+  companionMode?: {
+    visible: boolean;
+    focusPanelId?: string;
+  };
 }
 
 export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
   const iframeElement = useRef<any>();
   const iframeOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
   const mainWindowOnMessageRef = useRef<{ onMessage: (event: MessageEvent) => void }>();
-  const { debugDriver } = useContext(GlobalContext);
+  const companionModeRef = useRef(props.companionMode);
+  const { debugDriver, switchView } = useContext(GlobalContext);
   const { sessionId, clientId, inspectorUrl, inspectorType, info, showPanels, plugins } = props;
 
   const sendGenericMessageToIframe = useCallback((type: string, content?: unknown) => {
@@ -40,6 +94,12 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
     }
     targetWindow.postMessage({ type, content }, '*');
   }, []);
+  const syncCompanionMode = useCallback(() => {
+    sendGenericMessageToIframe('codex_companion_mode', {
+      visible: Boolean(companionModeRef.current?.visible),
+      focusPanelId: companionModeRef.current?.focusPanelId ?? 'uitree-drawer'
+    });
+  }, [sendGenericMessageToIframe]);
   const sendMessageToIframe = (message: ICustomDataWrapper<ECustomDataType.CDP>) => {
     const targetWindow = iframeElement.current?.contentWindow;
     if (!targetWindow) {
@@ -97,6 +157,13 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
 
       // Handle iframe communication from inside to outside
       const { content, type } = event.data;
+      if (type === 'codex_send_context') {
+        // Allow focused inspector views to push local debugging context into
+        // Codex while keeping the current session metadata attached.
+        dispatchCodexContext(content as CodexContextInput);
+        return;
+      }
+
       if (type) {
         devtoolActionHandler.handle(type, content);
       }
@@ -115,6 +182,7 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
         case 'iframe_loaded':
           console.log('iframe loaded', event);
           lynxOpen();
+          syncCompanionMode();
           break;
         // Call lynx communication interface to forward messages
         case 'send_message':
@@ -163,6 +231,61 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
     )}&sdkVersion=${info?.info?.sdkVersion}`;
   }, [clientId, sessionId, inspectorType, inspectorUrl, showPanels, info]);
 
+  const codexContextText = useMemo(() => {
+    const sessionInfo = info?.sessions.find((session) => session.session_id === sessionId);
+    const deviceInfo = info?.info ?? {};
+    const contextLines = [
+      'Lynx DevTool session context',
+      '',
+      'Session:',
+      `- clientId: ${clientId || 'unknown'}`,
+      `- sessionId: ${sessionId || 'unknown'}`,
+      `- inspectorType: ${inspectorType || 'unknown'}`,
+      `- sessionUrl: ${sessionInfo?.url || 'unknown'}`,
+      '',
+      'Environment:',
+      `- app: ${deviceInfo.App || 'unknown'} ${deviceInfo.AppVersion || ''}`.trim(),
+      `- deviceModel: ${deviceInfo.deviceModel || 'unknown'}`,
+      `- os: ${deviceInfo.osType || 'unknown'} ${deviceInfo.osVersion || ''}`.trim(),
+      `- sdkVersion: ${deviceInfo.sdkVersion || 'unknown'}`,
+      `- ldtVersion: ${deviceInfo.ldtVersion || 'unknown'}`,
+      `- network: ${deviceInfo.network || 'unknown'}`
+    ];
+
+    return contextLines.join('\n');
+  }, [clientId, info, inspectorType, sessionId]);
+
+  const dispatchCodexContext = useCallback((payloadInput?: CodexContextInput) => {
+    const includeBaseContext =
+      typeof payloadInput === 'string' ? true : payloadInput?.includeBaseContext !== false;
+    const extraText = typeof payloadInput === 'string' ? payloadInput : payloadInput?.text;
+    const contextSections = [
+      includeBaseContext ? codexContextText : '',
+      typeof extraText === 'string' ? extraText.trim() : ''
+    ].filter(Boolean);
+
+    if (contextSections.length === 0) {
+      return;
+    }
+
+    const payload: CodexContextPayload = {
+      id: typeof payloadInput === 'string' ? createCodexContextId() : payloadInput?.id ?? createCodexContextId(),
+      label:
+        typeof payloadInput === 'string'
+          ? labelForCodexContextSource('devtool-panel')
+          : payloadInput?.label ?? labelForCodexContextSource(payloadInput?.source),
+      text: contextSections.join('\n\n'),
+      createdAt: typeof payloadInput === 'string' ? Date.now() : payloadInput?.createdAt ?? Date.now(),
+      autoSend: typeof payloadInput === 'string' ? false : payloadInput?.autoSend ?? false,
+      source: typeof payloadInput === 'string' ? 'devtool-panel' : payloadInput?.source ?? 'devtool-panel'
+    };
+
+    const storedPayloads = parseStoredCodexPayloads(sessionStorage.getItem(CODEX_CONTEXT_STORAGE_KEY));
+    sessionStorage.setItem(CODEX_CONTEXT_STORAGE_KEY, JSON.stringify([...storedPayloads, payload]));
+    window.dispatchEvent(new CustomEvent(CODEX_CONTEXT_EVENT_NAME, { detail: payload }));
+    switchView({ pluginId: 'codex-agent' });
+  }, [codexContextText, switchView]);
+
   useEffect(() => {
     const onInspectMessage = (_: any, data: any) => {
       sendGenericMessageToIframe('inspect-devtool-message', data);
@@ -180,10 +303,15 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
       }
       window.ldtElectronAPI?.off('inspect-devtool-message', onInspectMessage);
     };
-  }, [clientId, sessionId, inspectorType, inspectorUrl]);
+  }, [clientId, dispatchCodexContext, sessionId, inspectorType, inspectorUrl]);
+
+  useEffect(() => {
+    companionModeRef.current = props.companionMode;
+    syncCompanionMode();
+  }, [props.companionMode, syncCompanionMode]);
 
   return (
-    <div style={{ height: '100%', width: '100%' }}>
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
       {clientId > 0 && sessionId > 0 ? (
         <iframe
           key={`${clientId}-${sessionId}`}

@@ -22,6 +22,9 @@ import { createCustomData } from '@lynx-js/remote-debug-driver';
 import { ECustomDataType } from '@lynx-js/remote-debug-driver';
 
 export const GlobalContext = createContext<RendererContext<AsyncBridgeType>>({} as any);
+const CODEX_COMPANION_EVENT_NAME = 'codex:companion-visibility';
+const DEFAULT_COMPANION_PANEL_ID = 'uitree-drawer';
+
 // eslint-disable-next-line max-lines-per-function
 export default definePlugin<AsyncBridgeType>((context) => {
   const {
@@ -57,6 +60,10 @@ export default definePlugin<AsyncBridgeType>((context) => {
 
   const Index = () => {
     const [devtoolProps, setDevtoolProps] = useState<IDevToolProps>(props);
+    const [companionMode, setCompanionMode] = useState<NonNullable<IDevToolProps['companionMode']>>({
+      visible: false,
+      focusPanelId: DEFAULT_COMPANION_PANEL_ID
+    });
     const { selectedDevice, deviceInfoMap, setDeviceInfoMap } = context.useConnection();
 
     useEffect(() => {
@@ -129,6 +136,23 @@ export default definePlugin<AsyncBridgeType>((context) => {
         debugDriver.off(EDebugDriverClientEventNames.ClientChange, onClientChange);
         debugDriver.off(EDebugDriverClientEventNames.SessionChange, onSessionChange);
         debugDriver.off(EDebugDriverClientEventNames.SessionWillChange, onSessionWillChange);
+      };
+    }, []);
+
+    useEffect(() => {
+      const handleCodexCompanionVisibility = (event) => {
+        setCompanionMode({
+          visible: Boolean(event?.params?.visible),
+          focusPanelId:
+            typeof event?.params?.focusPanelId === 'string' && event.params.focusPanelId
+              ? event.params.focusPanelId
+              : DEFAULT_COMPANION_PANEL_ID
+        });
+      };
+
+      context.addPluginEventListener(CODEX_COMPANION_EVENT_NAME, handleCodexCompanionVisibility);
+      return () => {
+        context.removePluginEventListener(CODEX_COMPANION_EVENT_NAME, handleCodexCompanionVisibility);
       };
     }, []);
 
@@ -224,7 +248,7 @@ export default definePlugin<AsyncBridgeType>((context) => {
 
     return (
       <GlobalContext.Provider value={context}>
-        <DevTool {...devtoolProps} />
+        <DevTool {...devtoolProps} companionMode={companionMode} />
       </GlobalContext.Provider>
     );
   };
