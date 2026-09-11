@@ -309,31 +309,37 @@ const UIStrings = {
   *@description A context menu item in the Network Log View of the Network panel
   */
   saveAllAsHarWithContent: 'Save all as `HAR` with content',
-  /**
-  *@description A context menu item in the Network Log View of the Network panel
-  */
-  clearBrowserCache: 'Clear browser cache',
-  /**
-  *@description A context menu item in the Network Log View of the Network panel
-  */
-  clearBrowserCookies: 'Clear browser cookies',
-  /**
-  *@description A context menu item in the Network Log View of the Network panel
-  */
-  blockRequestUrl: 'Block request URL',
-  /**
-  *@description A context menu item in the Network Log View of the Network panel
-  *@example {example.com} PH1
-  */
-  unblockS: 'Unblock {PH1}',
-  /**
-  *@description A context menu item in the Network Log View of the Network panel
-  */
-  blockRequestDomain: 'Block request domain',
-  /**
-  *@description Text to replay an XHR request
-  */
-  replayXhr: 'Replay XHR',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description A context menu item in the Network Log View of the Network panel
+  // */
+  // clearBrowserCache: 'Clear browser cache',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description A context menu item in the Network Log View of the Network panel
+  // */
+  // clearBrowserCookies: 'Clear browser cookies',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description A context menu item in the Network Log View of the Network panel
+  // */
+  // blockRequestUrl: 'Block request URL',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description A context menu item in the Network Log View of the Network panel
+  // *@example {example.com} PH1
+  // */
+  // unblockS: 'Unblock {PH1}',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description A context menu item in the Network Log View of the Network panel
+  // */
+  // blockRequestDomain: 'Block request domain',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description Text to replay an XHR request
+  // */
+  // replayXhr: 'Replay XHR',
   /**
   *@description Text in Network Log View of the Network panel
   */
@@ -1535,53 +1541,54 @@ export class NetworkLogView extends UI.Widget.VBox implements
 
     contextMenu.saveSection().appendItem(i18nString(UIStrings.saveAllAsHarWithContent), this.exportAll.bind(this));
 
-    contextMenu.editSection().appendItem(i18nString(UIStrings.clearBrowserCache), this._clearBrowserCache.bind(this));
-    contextMenu.editSection().appendItem(
-        i18nString(UIStrings.clearBrowserCookies), this._clearBrowserCookies.bind(this));
+    // LynxDevtool disable: request blocking, replay and browser data clearing are unsupported.
+    // contextMenu.editSection().appendItem(i18nString(UIStrings.clearBrowserCache), this._clearBrowserCache.bind(this));
+    // contextMenu.editSection().appendItem(
+    //     i18nString(UIStrings.clearBrowserCookies), this._clearBrowserCookies.bind(this));
 
-    if (request) {
-      const maxBlockedURLLength = 20;
-      const manager = SDK.NetworkManager.MultitargetNetworkManager.instance();
-      let patterns = manager.blockedPatterns();
+    // if (request) {
+    //   const maxBlockedURLLength = 20;
+    //   const manager = SDK.NetworkManager.MultitargetNetworkManager.instance();
+    //   let patterns = manager.blockedPatterns();
 
-      function addBlockedURL(url: string): void {
-        patterns.push({enabled: true, url: url});
-        manager.setBlockedPatterns(patterns);
-        manager.setBlockingEnabled(true);
-        UI.ViewManager.ViewManager.instance().showView('network.blocked-urls');
-      }
+    //   function addBlockedURL(url: string): void {
+    //     patterns.push({enabled: true, url: url});
+    //     manager.setBlockedPatterns(patterns);
+    //     manager.setBlockingEnabled(true);
+    //     UI.ViewManager.ViewManager.instance().showView('network.blocked-urls');
+    //   }
 
-      function removeBlockedURL(url: string): void {
-        patterns = patterns.filter(pattern => pattern.url !== url);
-        manager.setBlockedPatterns(patterns);
-        UI.ViewManager.ViewManager.instance().showView('network.blocked-urls');
-      }
+    //   function removeBlockedURL(url: string): void {
+    //     patterns = patterns.filter(pattern => pattern.url !== url);
+    //     manager.setBlockedPatterns(patterns);
+    //     UI.ViewManager.ViewManager.instance().showView('network.blocked-urls');
+    //   }
 
-      const urlWithoutScheme = request.parsedURL.urlWithoutScheme();
-      if (urlWithoutScheme && !patterns.find(pattern => pattern.url === urlWithoutScheme)) {
-        contextMenu.debugSection().appendItem(
-            i18nString(UIStrings.blockRequestUrl), addBlockedURL.bind(null, urlWithoutScheme));
-      } else if (urlWithoutScheme) {
-        const croppedURL = Platform.StringUtilities.trimMiddle(urlWithoutScheme, maxBlockedURLLength);
-        contextMenu.debugSection().appendItem(
-            i18nString(UIStrings.unblockS, {PH1: croppedURL}), removeBlockedURL.bind(null, urlWithoutScheme));
-      }
+    //   const urlWithoutScheme = request.parsedURL.urlWithoutScheme();
+    //   if (urlWithoutScheme && !patterns.find(pattern => pattern.url === urlWithoutScheme)) {
+    //     contextMenu.debugSection().appendItem(
+    //         i18nString(UIStrings.blockRequestUrl), addBlockedURL.bind(null, urlWithoutScheme));
+    //   } else if (urlWithoutScheme) {
+    //     const croppedURL = Platform.StringUtilities.trimMiddle(urlWithoutScheme, maxBlockedURLLength);
+    //     contextMenu.debugSection().appendItem(
+    //         i18nString(UIStrings.unblockS, {PH1: croppedURL}), removeBlockedURL.bind(null, urlWithoutScheme));
+    //   }
 
-      const domain = request.parsedURL.domain();
-      if (domain && !patterns.find(pattern => pattern.url === domain)) {
-        contextMenu.debugSection().appendItem(
-            i18nString(UIStrings.blockRequestDomain), addBlockedURL.bind(null, domain));
-      } else if (domain) {
-        const croppedDomain = Platform.StringUtilities.trimMiddle(domain, maxBlockedURLLength);
-        contextMenu.debugSection().appendItem(
-            i18nString(UIStrings.unblockS, {PH1: croppedDomain}), removeBlockedURL.bind(null, domain));
-      }
+    //   const domain = request.parsedURL.domain();
+    //   if (domain && !patterns.find(pattern => pattern.url === domain)) {
+    //     contextMenu.debugSection().appendItem(
+    //         i18nString(UIStrings.blockRequestDomain), addBlockedURL.bind(null, domain));
+    //   } else if (domain) {
+    //     const croppedDomain = Platform.StringUtilities.trimMiddle(domain, maxBlockedURLLength);
+    //     contextMenu.debugSection().appendItem(
+    //         i18nString(UIStrings.unblockS, {PH1: croppedDomain}), removeBlockedURL.bind(null, domain));
+    //   }
 
-      if (SDK.NetworkManager.NetworkManager.canReplayRequest(request)) {
-        contextMenu.debugSection().appendItem(
-            i18nString(UIStrings.replayXhr), SDK.NetworkManager.NetworkManager.replayRequest.bind(null, request));
-      }
-    }
+    //   if (SDK.NetworkManager.NetworkManager.canReplayRequest(request)) {
+    //     contextMenu.debugSection().appendItem(
+    //         i18nString(UIStrings.replayXhr), SDK.NetworkManager.NetworkManager.replayRequest.bind(null, request));
+    //   }
+    // }
   }
 
   _harRequests(): SDK.NetworkRequest.NetworkRequest[] {
