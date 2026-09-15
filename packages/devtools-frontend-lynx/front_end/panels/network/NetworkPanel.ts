@@ -46,7 +46,8 @@ import * as NetworkForward from '../../panels/network/forward/forward.js';
 import * as IconButton from '../../ui/components/icon_button/icon_button.js';
 import * as PerfUI from '../../ui/legacy/components/perf_ui/perf_ui.js';
 import * as UI from '../../ui/legacy/legacy.js';
-import * as MobileThrottling from '../mobile_throttling/mobile_throttling.js';
+// LynxDevtool disable: do not initialize network throttling controls.
+// import * as MobileThrottling from '../mobile_throttling/mobile_throttling.js';
 import * as Search from '../search/search.js';
 
 import {BlockedURLsPane} from './BlockedURLsPane.js';
@@ -60,6 +61,10 @@ import type {NetworkTimeCalculator} from './NetworkTimeCalculator.js';
 import {NetworkTransferTimeCalculator} from './NetworkTimeCalculator.js';  // eslint-disable-line no-unused-vars
 
 const UIStrings = {
+  /** @description Tooltip for network controls unsupported by the Lynx backend */
+  unsupportedByBackend: 'Not supported',
+  /** @description Label of the disabled network throttling selector */
+  noThrottling: 'No throttling',
   /**
   *@description Text to close something
   */
@@ -80,10 +85,11 @@ const UIStrings = {
   *@description Text to preserve the log after refreshing
   */
   preserveLog: 'Preserve log',
-  /**
-  *@description Text to disable cache while DevTools is open
-  */
-  disableCacheWhileDevtoolsIsOpen: 'Disable cache (while DevTools is open)',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description Text to disable cache while DevTools is open
+  // */
+  // disableCacheWhileDevtoolsIsOpen: 'Disable cache (while DevTools is open)',
   /**
   *@description Text in Network Config View of the Network panel
   */
@@ -116,10 +122,11 @@ const UIStrings = {
   *@description Text in Network Panel of the Network panel
   */
   groupByFrame: 'Group by frame',
-  /**
-  *@description Tooltip for capture screenshot network setting
-  */
-  captureScreenshotsWhenLoadingA: 'Capture screenshots when loading a page',
+  // LynxDevtool disable: text for an unavailable control.
+  // /**
+  // *@description Tooltip for capture screenshot network setting
+  // */
+  // captureScreenshotsWhenLoadingA: 'Capture screenshots when loading a page',
   /**
   *@description Text to take screenshots
   */
@@ -303,7 +310,8 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
 
     this._networkLogShowOverviewSetting.addChangeListener(this._toggleShowOverview, this);
     this._networkLogLargeRowsSetting.addChangeListener(this._toggleLargerRequests, this);
-    this._networkRecordFilmStripSetting.addChangeListener(this._toggleRecordFilmStrip, this);
+    // LynxDevtool disable: screenshot recording is unsupported, including saved settings.
+    // this._networkRecordFilmStripSetting.addChangeListener(this._toggleRecordFilmStrip, this);
 
     this._preserveLogSetting = Common.Settings.Settings.instance().moduleSetting('network_log.preserve-log');
     this._recordLogSetting = Common.Settings.Settings.instance().moduleSetting('network_log.record-log');
@@ -315,7 +323,8 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
     this._toggleRecord(this._recordLogSetting.get());
     this._toggleShowOverview();
     this._toggleLargerRequests();
-    this._toggleRecordFilmStrip();
+    // LynxDevtool disable: screenshot recording is unsupported, including saved settings.
+    // this._toggleRecordFilmStrip();
     this._updateUI();
 
     SDK.TargetManager.TargetManager.instance().addModelListener(
@@ -390,12 +399,16 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
 
   _setupToolbarButtons(splitWidget: UI.SplitWidget.SplitWidget): void {
     const searchToggle = new UI.Toolbar.ToolbarToggle(i18nString(UIStrings.search), 'largeicon-search');
+    // LynxDevtool disable: cross-request search requires Network.searchInResponseBody.
+    searchToggle.setEnabled(false);
+    searchToggle.setTitle(i18nString(UIStrings.unsupportedByBackend));
     function updateSidebarToggle(): void {
       const isSidebarShowing = splitWidget.showMode() !== UI.SplitWidget.ShowMode.OnlyMain;
       searchToggle.setToggled(isSidebarShowing);
-      if (!isSidebarShowing) {
-        (searchToggle.element as HTMLElement).focus();
-      }
+      // LynxDevtool disable: do not move focus to the disabled search button.
+      // if (!isSidebarShowing) {
+      //   (searchToggle.element as HTMLElement).focus();
+      // }
     }
     this._panelToolbar.appendToolbarItem(UI.Toolbar.Toolbar.createActionButton(this._toggleRecordAction));
     const clearButton = new UI.Toolbar.ToolbarButton(i18nString(UIStrings.clear), 'largeicon-clear');
@@ -417,9 +430,10 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
         this._preserveLogSetting, i18nString(UIStrings.doNotClearLogOnPageReload), i18nString(UIStrings.preserveLog)));
 
     this._panelToolbar.appendSeparator();
-    const disableCacheCheckbox = new UI.Toolbar.ToolbarSettingCheckbox(
-        Common.Settings.Settings.instance().moduleSetting('cacheDisabled'),
-        i18nString(UIStrings.disableCacheWhileDevtoolsIsOpen), i18nString(UIStrings.disableCache));
+    // LynxDevtool disable: keep this unchecked and independent of the saved cache setting.
+    const disableCacheCheckbox = new UI.Toolbar.ToolbarCheckbox(
+        i18nString(UIStrings.disableCache), i18nString(UIStrings.unsupportedByBackend));
+    disableCacheCheckbox.setEnabled(false);
     this._panelToolbar.appendToolbarItem(disableCacheCheckbox);
 
     this._panelToolbar.appendToolbarItem(this._throttlingSelect);
@@ -433,6 +447,9 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
     };
     const networkConditionsButton =
         new UI.Toolbar.ToolbarButton(i18nString(UIStrings.moreNetworkConditions), networkConditionsIcon);
+    // LynxDevtool disable: Network conditions is not registered.
+    networkConditionsButton.setEnabled(false);
+    networkConditionsButton.setTitle(i18nString(UIStrings.unsupportedByBackend));
     networkConditionsButton.addEventListener(UI.Toolbar.ToolbarButton.Events.Click, () => {
       UI.ViewManager.ViewManager.instance().showView('network.config');
     }, this);
@@ -457,9 +474,11 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
     settingsToolbarRight.appendToolbarItem(new UI.Toolbar.ToolbarSettingCheckbox(
         Common.Settings.Settings.instance().moduleSetting('network.group-by-frame'),
         i18nString(UIStrings.groupRequestsByTopLevelRequest), i18nString(UIStrings.groupByFrame)));
-    settingsToolbarRight.appendToolbarItem(new UI.Toolbar.ToolbarSettingCheckbox(
-        this._networkRecordFilmStripSetting, i18nString(UIStrings.captureScreenshotsWhenLoadingA),
-        i18nString(UIStrings.captureScreenshots)));
+    // LynxDevtool disable: screenshot tracing is unsupported; ignore the saved setting.
+    const captureScreenshotsCheckbox = new UI.Toolbar.ToolbarCheckbox(
+        i18nString(UIStrings.captureScreenshots), i18nString(UIStrings.unsupportedByBackend));
+    captureScreenshotsCheckbox.setEnabled(false);
+    settingsToolbarRight.appendToolbarItem(captureScreenshotsCheckbox);
 
     this._panelToolbar.appendSeparator();
     const importHarButton = new UI.Toolbar.ToolbarButton(i18nString(UIStrings.importHarFile), 'largeicon-load');
@@ -480,8 +499,10 @@ export class NetworkPanel extends UI.Panel.Panel implements UI.ContextMenu.Provi
   _createThrottlingConditionsSelect(): UI.Toolbar.ToolbarComboBox {
     const toolbarItem = new UI.Toolbar.ToolbarComboBox(null, i18nString(UIStrings.throttling));
     toolbarItem.setMaxWidth(160);
-    MobileThrottling.ThrottlingManager.throttlingManager().decorateSelectWithNetworkThrottling(
-        toolbarItem.selectElement());
+    // LynxDevtool disable: do not restore saved conditions through ThrottlingManager.
+    toolbarItem.addOption(toolbarItem.createOption(i18nString(UIStrings.noThrottling)));
+    toolbarItem.setEnabled(false);
+    UI.Tooltip.Tooltip.install(toolbarItem.element, i18nString(UIStrings.unsupportedByBackend));
     return toolbarItem;
   }
 

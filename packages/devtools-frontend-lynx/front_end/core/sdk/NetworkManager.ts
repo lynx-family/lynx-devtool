@@ -128,11 +128,12 @@ export class NetworkManager extends SDKModel {
     this._networkAgent = target.networkAgent();
     target.registerNetworkDispatcher(this._dispatcher);
     if (Common.Settings.Settings.instance().moduleSetting('cacheDisabled').get()) {
-      this._networkAgent.invoke_setCacheDisabled({cacheDisabled: true});
+      // LynxDevtool disable: backend does not implement this network control.
+      // this._networkAgent.invoke_setCacheDisabled({cacheDisabled: true});
     }
 
+    this._networkAgent.invoke_enable({maxPostDataSize: MAX_EAGER_POST_REQUEST_BODY_LENGTH});
     // method not implemented
-    // this._networkAgent.invoke_enable({maxPostDataSize: MAX_EAGER_POST_REQUEST_BODY_LENGTH});
     // this._networkAgent.invoke_setAttachDebugStack({enabled: true});
 
     this._bypassServiceWorkerSetting = Common.Settings.Settings.instance().createSetting('bypassServiceWorker', false);
@@ -250,9 +251,10 @@ export class NetworkManager extends SDKModel {
     return this._dispatcher.requestForURL(url);
   }
 
-  _cacheDisabledSettingChanged(event: Common.EventTarget.EventTargetEvent): void {
-    const enabled = (event.data as boolean);
-    this._networkAgent.invoke_setCacheDisabled({cacheDisabled: enabled});
+  _cacheDisabledSettingChanged(_event: Common.EventTarget.EventTargetEvent): void {
+    // LynxDevtool disable: backend does not implement this network control.
+    // const enabled = (event.data as boolean);
+    // this._networkAgent.invoke_setCacheDisabled({cacheDisabled: enabled});
   }
 
   dispose(): void {
@@ -262,7 +264,8 @@ export class NetworkManager extends SDKModel {
   }
 
   _bypassServiceWorkerChanged(): void {
-    this._networkAgent.invoke_setBypassServiceWorker({bypass: this._bypassServiceWorkerSetting.get()});
+    // LynxDevtool disable: backend does not implement this network control.
+    // this._networkAgent.invoke_setBypassServiceWorker({bypass: this._bypassServiceWorkerSetting.get()});
   }
 
   async getSecurityIsolationStatus(frameId: string): Promise<Protocol.Network.SecurityIsolationStatus|null> {
@@ -1129,11 +1132,13 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
       networkAgent.invoke_setExtraHTTPHeaders({headers: this._extraHeaders});
     }
     if (this.currentUserAgent()) {
-      networkAgent.invoke_setUserAgentOverride(
-          {userAgent: this.currentUserAgent(), userAgentMetadata: this._userAgentMetadataOverride || undefined});
+      // LynxDevtool disable: backend does not implement this network control.
+      // networkAgent.invoke_setUserAgentOverride(
+      //     {userAgent: this.currentUserAgent(), userAgentMetadata: this._userAgentMetadataOverride || undefined});
     }
     if (this._effectiveBlockedURLs.length) {
-      networkAgent.invoke_setBlockedURLs({urls: this._effectiveBlockedURLs});
+      // LynxDevtool disable: backend does not implement this network control.
+      // networkAgent.invoke_setBlockedURLs({urls: this._effectiveBlockedURLs});
     }
     if (this.isIntercepting()) {
       networkAgent.invoke_setRequestInterception({patterns: this._urlsForRequestInterceptor.valuesArray()});
@@ -1142,7 +1147,8 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
       // method not implemented
       // networkAgent.invoke_clearAcceptedEncodingsOverride();
     } else {
-      networkAgent.invoke_setAcceptedEncodings({encodings: this._customAcceptedEncodings});
+      // LynxDevtool disable: backend does not implement this network control.
+      // networkAgent.invoke_setAcceptedEncodings({encodings: this._customAcceptedEncodings});
     }
     this._agents.add(networkAgent);
     if (this.isThrottling()) {
@@ -1182,20 +1188,21 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
     return this._networkConditions;
   }
 
-  _updateNetworkConditions(networkAgent: ProtocolProxyApi.NetworkApi): void {
-    const conditions = this._networkConditions;
-    if (!this.isThrottling()) {
-      networkAgent.invoke_emulateNetworkConditions(
-          {offline: false, latency: 0, downloadThroughput: 0, uploadThroughput: 0});
-    } else {
-      networkAgent.invoke_emulateNetworkConditions({
-        offline: this.isOffline(),
-        latency: conditions.latency,
-        downloadThroughput: conditions.download < 0 ? 0 : conditions.download,
-        uploadThroughput: conditions.upload < 0 ? 0 : conditions.upload,
-        connectionType: NetworkManager._connectionType(conditions),
-      });
-    }
+  _updateNetworkConditions(_networkAgent: ProtocolProxyApi.NetworkApi): void {
+    // LynxDevtool disable: backend does not implement this network control.
+    // const conditions = this._networkConditions;
+    // if (!this.isThrottling()) {
+    //   networkAgent.invoke_emulateNetworkConditions(
+    //       {offline: false, latency: 0, downloadThroughput: 0, uploadThroughput: 0});
+    // } else {
+    //   networkAgent.invoke_emulateNetworkConditions({
+    //     offline: this.isOffline(),
+    //     latency: conditions.latency,
+    //     downloadThroughput: conditions.download < 0 ? 0 : conditions.download,
+    //     uploadThroughput: conditions.upload < 0 ? 0 : conditions.upload,
+    //     connectionType: NetworkManager._connectionType(conditions),
+    //   });
+    // }
   }
 
   setExtraHTTPHeaders(headers: Protocol.Network.Headers): void {
@@ -1210,11 +1217,12 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
   }
 
   _updateUserAgentOverride(): void {
-    const userAgent = this.currentUserAgent();
-    for (const agent of this._agents) {
-      agent.invoke_setUserAgentOverride(
-          {userAgent: userAgent, userAgentMetadata: this._userAgentMetadataOverride || undefined});
-    }
+    // LynxDevtool disable: backend does not implement this network control.
+    // const userAgent = this.currentUserAgent();
+    // for (const agent of this._agents) {
+    //   agent.invoke_setUserAgentOverride(
+    //       {userAgent: userAgent, userAgentMetadata: this._userAgentMetadataOverride || undefined});
+    // }
   }
 
   setUserAgentOverride(userAgent: string, userAgentMetadataOverride: Protocol.Emulation.UserAgentMetadata|null): void {
@@ -1260,14 +1268,15 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
   }
 
   _updateAcceptedEncodingsOverride(): void {
-    const customAcceptedEncodings = this._customAcceptedEncodings;
-    for (const agent of this._agents) {
-      if (customAcceptedEncodings === null) {
-        agent.invoke_clearAcceptedEncodingsOverride();
-      } else {
-        agent.invoke_setAcceptedEncodings({encodings: customAcceptedEncodings});
-      }
-    }
+    // LynxDevtool disable: backend does not implement this network control.
+    // const customAcceptedEncodings = this._customAcceptedEncodings;
+    // for (const agent of this._agents) {
+    //   if (customAcceptedEncodings === null) {
+    //     agent.invoke_clearAcceptedEncodingsOverride();
+    //   } else {
+    //     agent.invoke_setAcceptedEncodings({encodings: customAcceptedEncodings});
+    //   }
+    // }
   }
 
   // TODO(allada) Move all request blocking into interception and let view manage blocking.
@@ -1312,9 +1321,10 @@ export class MultitargetNetworkManager extends Common.ObjectWrapper.ObjectWrappe
       return;
     }
     this._effectiveBlockedURLs = urls;
-    for (const agent of this._agents) {
-      agent.invoke_setBlockedURLs({urls: this._effectiveBlockedURLs});
-    }
+    // LynxDevtool disable: backend does not implement request blocking.
+    // for (const agent of this._agents) {
+    //   agent.invoke_setBlockedURLs({urls: this._effectiveBlockedURLs});
+    // }
   }
 
   isIntercepting(): boolean {
