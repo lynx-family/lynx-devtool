@@ -20,6 +20,7 @@ import './index.scss';
 import { LDTPlatformPluginForUser } from './devtool/types';
 import { createCustomData } from '@lynx-js/remote-debug-driver';
 import { ECustomDataType } from '@lynx-js/remote-debug-driver';
+import { PLUGIN_EVENT_GET_PLATFORM_PLUGINS } from '../../../src/constants/event';
 
 export const GlobalContext = createContext<RendererContext<AsyncBridgeType>>({} as any);
 // eslint-disable-next-line max-lines-per-function
@@ -109,8 +110,14 @@ export default definePlugin<AsyncBridgeType>((context) => {
         setDevtoolProps({ ...devtoolProps });
       };
       const onClientChange = ({ device }) => {
-        devtoolProps.clientId = device.clientId || -1;
-        setDevtoolProps({ ...devtoolProps });
+        // @ts-ignore
+        window.ldtElectronAPI
+          .invoke(PLUGIN_EVENT_GET_PLATFORM_PLUGINS, {})
+          .then((platformPlugins) => {
+            devtoolProps.clientId = device.clientId || -1;
+            devtoolProps.plugins = platformPlugins;
+            setDevtoolProps({ ...devtoolProps });
+          });
       };
 
       debugDriver.on(EDebugDriverClientEventNames.ClientChange, onClientChange);

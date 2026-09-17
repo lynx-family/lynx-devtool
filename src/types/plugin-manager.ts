@@ -14,6 +14,14 @@ export type ProcessedPluginMeta = {
   valid?: boolean;
   groupId?: string;
   groupName?: string;
+  platformPlugin?: {
+    entry: string;
+    iframeSrc?: string;
+    assets?: string[];
+    location?: string;
+    type?: string;
+    isValid?: boolean;
+  };
 };
 
 export type ProcessedPluginGroupMeta = {
