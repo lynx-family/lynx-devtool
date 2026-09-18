@@ -368,6 +368,15 @@ export class ScreencastView extends UI.Widget.VBox implements SDK.OverlayModel.H
       this._updateHighlightInOverlayAndRepaint({ node, selectorList: undefined }, this._inspectModeConfig);
       this._domModel.overlayModel().nodeHighlightRequested({ nodeId: node.id });
     } else if (event.type === 'click') {
+      const mouseEvent = event as MouseEvent;
+      window.dispatchEvent(new CustomEvent('lynx-codex-element-anchor', {
+        detail: {
+          clientX: mouseEvent.clientX,
+          clientY: mouseEvent.clientY,
+          nodeId: node.id,
+        }
+      }));
+
       // focus uitree-drawer on drawer panel if uitree-panel was shown on main panel before click
       const inspectorView = UI.InspectorView.InspectorView.instance();
       if (inspectorView._tabbedPane.selectedTabId === 'uitree-panel') {

@@ -17,18 +17,29 @@ import { KEY_CURRENT_PLUGIN_ID } from '../../constants';
 import { sendStatisticsEvent, STATISTICS_EVENT_NAME } from '@/renderer/utils/statisticsUtils';
 import { usePluginUsageTracker } from '@/renderer/hooks/usage-tracker';
 
+const CODEX_PLUGIN_ID = 'codex-agent';
+const DEVTOOL_PLUGIN_ID = 'devtool';
+const CODEX_COMPANION_EVENT_NAME = 'codex:companion-visibility';
+const CODEX_COMPANION_PANEL_ID = 'uitree-drawer';
+
 export default function RendererPluginView(props: { plugins: any[] }) {
   const { plugins } = props;
   if (plugins.length === 0) {
     return null;
   }
   const filteredPlugins = plugins.filter((plugin) => !plugin.disable && plugin.valid);
+  const initialPluginId = sessionStorage.getItem(KEY_CURRENT_PLUGIN_ID) ?? filteredPlugins[0]?.id;
 
-  const [currentPluginId, setCurrentPluginId] = useState();
+  const [currentPluginId, setCurrentPluginId] = useState(initialPluginId);
   const [currentModalPlugin, setCurrentModalPlugin] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState<number>(() => window.innerWidth);
   const componentCacheRef = useRef<Record<string, React.ReactElement>>({});
   const contextCacheRef = useRef<Record<string, RendererContext>>({});
+  const devtoolPlugin = filteredPlugins.find((plugin) => plugin.id === DEVTOOL_PLUGIN_ID);
+  const currentPlugin = filteredPlugins.find((plugin) => plugin.id === currentPluginId) ?? filteredPlugins[0];
+  const isCodexCompanionLayout = currentPluginId === CODEX_PLUGIN_ID && Boolean(devtoolPlugin);
+  const isVerticalCodexCompanionLayout = isCodexCompanionLayout && viewportWidth < 1280;
 
   const produceComponent = (plugin: any) => {
     if (plugin.plugin && !componentCacheRef.current[plugin.id]) {
@@ -101,21 +112,66 @@ export default function RendererPluginView(props: { plugins: any[] }) {
     };
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const devtoolContext = contextCacheRef.current[DEVTOOL_PLUGIN_ID];
+    if (!devtoolContext) {
+      return;
+    }
+
+    devtoolContext.publishPluginEvent({
+      pluginId: DEVTOOL_PLUGIN_ID,
+      eventName: CODEX_COMPANION_EVENT_NAME,
+      params: {
+        visible: isCodexCompanionLayout,
+        focusPanelId: CODEX_COMPANION_PANEL_ID
+      }
+    });
+  }, [isCodexCompanionLayout]);
+
   usePluginUsageTracker(currentPluginId);
 
   return (
     <div className="ldt-container">
-      <div className="overlay-component">
-        {filteredPlugins.map((plugin) => (
+      {isCodexCompanionLayout && devtoolPlugin && currentPlugin ? (
+        <div
+          className="overlay-component overlay-component--companion"
+          style={{ flexDirection: isVerticalCodexCompanionLayout ? 'column' : 'row' }}
+        >
           <div
-            key={plugin.id}
-            className="plugin-container"
-            style={{ display: currentPluginId === plugin.id ? 'block' : 'none' }}
+            className="plugin-container plugin-container--companion"
+            style={{
+              flex: isVerticalCodexCompanionLayout ? '0 0 45%' : '0 0 42%',
+              borderRight: !isVerticalCodexCompanionLayout ? '1px solid #d9d9d9' : undefined,
+              borderBottom: isVerticalCodexCompanionLayout ? '1px solid #d9d9d9' : undefined
+            }}
           >
-            {renderSwitchComponent(plugin)}
+            {produceComponent(devtoolPlugin)}
           </div>
-        ))}
-      </div>
+          <div
+            className="plugin-container plugin-container--active"
+            style={{ flex: isVerticalCodexCompanionLayout ? '1 1 55%' : '1 1 58%' }}
+          >
+            {renderSwitchComponent(currentPlugin)}
+          </div>
+        </div>
+      ) : (
+        <div className="overlay-component">
+          {currentPlugin && (
+            <div className="plugin-container plugin-container--active">{renderSwitchComponent(currentPlugin)}</div>
+          )}
+        </div>
+      )}
       {currentModalPlugin && (
         <Drawer
           width={'50vw'}

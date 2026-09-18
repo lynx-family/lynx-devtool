@@ -31,15 +31,6 @@ window.ldtElectronAPI = {
   }
 };
 
-// Expose necessary process information
-window.process = {
-  platform: process.platform,
-  env: {
-    NODE_ENV: process.env.NODE_ENV,
-    // Add other required environment variables
-  },
-  versions: {
-    node: process.versions.node,
-    electron: process.versions.electron
-  }
-};
+// Preserve the renderer's process object so EventEmitter APIs such as
+// listenerCount remain available to bundled libraries.
+window.process = process;

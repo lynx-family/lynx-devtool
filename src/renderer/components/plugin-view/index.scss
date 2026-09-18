@@ -18,7 +18,17 @@
   left: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
+}
+
+.overlay-component--companion {
   display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+.plugin-container {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
 }
