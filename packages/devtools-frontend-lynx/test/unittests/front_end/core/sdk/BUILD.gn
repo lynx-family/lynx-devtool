@@ -9,6 +9,7 @@ ts_library("sdk") {
   sources = [
     "AccessibilityModel_test.ts",
     "CSSContainerQuery_test.ts",
+    "CSSMatchedStyles_test.ts",
     "CSSPropertyParser_test.ts",
     "CSSProperty_test.ts",
     "ConsoleModel_test.ts",

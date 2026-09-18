@@ -9,7 +9,8 @@ import type {CSSModel, Edit} from './CSSModel.js';
 import {CSSLocation} from './CSSModel.js';
 import type {CSSStyleSheetHeader} from './CSSStyleSheetHeader.js';
 
-type CSSQueryPayload = Protocol.CSS.CSSMedia|Protocol.CSS.CSSContainerQuery|Protocol.CSS.CSSSupports;
+type CSSQueryPayload =
+    Protocol.CSS.CSSMedia|Protocol.CSS.CSSContainerQuery|Protocol.CSS.CSSSupports|Protocol.CSS.CSSLayer;
 
 export abstract class CSSQuery {
   text = '';
