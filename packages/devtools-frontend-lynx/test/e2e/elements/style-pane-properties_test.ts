@@ -5,7 +5,7 @@
 import {assert} from 'chai';
 import type * as puppeteer from 'puppeteer';
 
-import {$$, click, getBrowserAndPages, goToResource, timeout, waitFor} from '../../shared/helper.js';
+import {$$, click, getBrowserAndPages, goToResource, timeout, waitFor, waitForFunction} from '../../shared/helper.js';
 import {describe, it} from '../../shared/mocha-extensions.js';
 import {editQueryRuleText, getComputedStylesForDomNode, getDisplayedCSSPropertyNames, getDisplayedStyleRules, getStyleRule, getStyleSectionSubtitles, waitForContentOfSelectedElementsNode, waitForElementsStyleSection, waitForPropertyToHighlight, waitForStyleRule} from '../helpers/elements-helpers.js';
 
@@ -17,6 +17,7 @@ const SECOND_PROPERTY_NAME_SELECTOR = '.tree-outline li:nth-of-type(2) > .webkit
 const FIRST_PROPERTY_VALUE_SELECTOR = '.tree-outline li:nth-of-type(1) > .value';
 const RULE1_SELECTOR = '.rule1';
 const RULE2_SELECTOR = '.rule2';
+const LAYER_SEPARATOR_SELECTOR = '.layer-separator';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const deletePropertyByBackspace = async (selector: string, root?: puppeteer.ElementHandle<Element>) => {
@@ -347,5 +348,40 @@ describe('The Styles pane', async () => {
     const supportsQuery = await waitFor('.query.editable', rule1PropertiesSection);
     const supportsQueryText = await supportsQuery.evaluate(node => (node as HTMLElement).innerText as string);
     assert.deepEqual(supportsQueryText, '@supports (width: 10px)', 'incorrectly displayed @supports rule');
+  });
+
+  it('can display @layer separators', async () => {
+    const {frontend} = getBrowserAndPages();
+    await goToResourceAndWaitForStyleSection('elements/css-layers.html');
+
+    await frontend.keyboard.press('ArrowDown');
+    await waitForContentOfSelectedElementsNode('<div class=\u200B"rule1">\u200B</div>\u200B');
+
+    const layerSeparators = await waitForFunction(async () => {
+      const layers = await $$(LAYER_SEPARATOR_SELECTOR);
+      return layers.length === 6 ? layers : undefined;
+    });
+    const layerText = await Promise.all(layerSeparators.map(element => element.evaluate(node => node.textContent)));
+    assert.deepEqual(layerText, [
+      'Layer<anonymous>',
+      'Layerimportant',
+      'Layeroverrule',
+      'Layeroverrule.<anonymous>',
+      'Layerbase',
+      'Layer\xa0user\xa0agent\xa0stylesheet',
+    ]);
+  });
+
+  it('can open the layer tree from an @layer separator', async () => {
+    const {frontend} = getBrowserAndPages();
+    await goToResourceAndWaitForStyleSection('elements/css-layers.html');
+
+    await frontend.keyboard.press('ArrowDown');
+    await waitForContentOfSelectedElementsNode('<div class=\u200B"rule1">\u200B</div>\u200B');
+
+    const overruleButton = await waitFor('overrule[role="button"]', undefined, undefined, 'aria');
+    await click(overruleButton);
+
+    await waitFor('[data-node-key="2: overrule"]');
   });
 });
