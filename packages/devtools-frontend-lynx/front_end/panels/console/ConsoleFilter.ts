@@ -63,7 +63,26 @@ export class ConsoleFilter {
   }
 
   static defaultTagsFilterValue(): Protocol.Log.LogEntryTag[] {
-    return [Protocol.Log.LogEntryTag.AppJS, Protocol.Log.LogEntryTag.LynxCore, Protocol.Log.LogEntryTag.AppLepus];
+    // OtherApps is included in the default so that console.log() calls from
+    // app JS code are visible out-of-the-box.
+    //
+    // Background: in Lynx's shared-context model multiple LynxViews share a
+    // single JS inspector connection.  The C++ layer tags each
+    // Runtime.consoleAPICalled message with:
+    //   consoleId  = the viewId extracted from the script's URL
+    //               (file://view<N>/...)
+    //   viewId     = the instance_id of the debugger that delivered the event
+    // When consoleId !== viewId (common in multi-view and shared-context
+    // scenarios) the message is tagged OtherApps.  Excluding OtherApps from
+    // the default therefore silently drops most real app console.log output.
+    // Users who want to narrow output to a single app can select one of the
+    // "Current App" filter options in the console toolbar.
+    return [
+      Protocol.Log.LogEntryTag.AppJS,
+      Protocol.Log.LogEntryTag.LynxCore,
+      Protocol.Log.LogEntryTag.AppLepus,
+      Protocol.Log.LogEntryTag.OtherApps,
+    ];
   }
 
   clone(): ConsoleFilter {
