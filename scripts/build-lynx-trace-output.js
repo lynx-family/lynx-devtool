@@ -308,8 +308,12 @@ function main() {
         process.chdir(outputDir);
         console.log('Creating tar.gz archive...');
 
+        const temporaryArchive = `../lynx-trace-${process.pid}.tar.gz.tmp`;
         try {
-            runCommand('tar -czf lynx-trace.tar.gz --exclude=lynx-trace.tar.gz .');
+            // Keep the archive outside the directory being traversed. Creating it
+            // inside `.` changes that directory while GNU tar is reading it.
+            runCommand(`tar -czf ${temporaryArchive} --exclude=lynx-trace.tar.gz .`);
+            fs.renameSync(temporaryArchive, 'lynx-trace.tar.gz');
             console.log('Created lynx-trace.tar.gz successfully');
         } catch (error) {
             console.warn('tar command failed, trying alternative archive method...');
