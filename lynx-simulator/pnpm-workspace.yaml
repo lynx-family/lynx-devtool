@@ -1,0 +1,12 @@
+packages:
+  - 'packages/*'
+
+# Packages depend on each other by exact version instead of `workspace:*`, so
+# the same manifests also work in npm workspaces. Link those versions to the
+# local packages.
+linkWorkspacePackages: true
+
+# Lynxtron downloads its runtime in a postinstall script.
+onlyBuiltDependencies:
+  - '@lynx-js/lynxtron'
+  - esbuild

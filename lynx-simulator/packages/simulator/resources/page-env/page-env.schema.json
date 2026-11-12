@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lynx Simulator Page Environment",
+  "type": "object",
+  "properties": {
+    "templateData": {
+      "type": "object"
+    },
+    "globalProps": {
+      "type": "object"
+    },
+    "jsb": {
+      "type": "object",
+      "properties": {
+        "bridge": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bridgeMock"
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "bridgeMock": {
+      "type": "object",
+      "required": ["name", "result"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": true,
+        "delayMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "result": true
+      },
+      "additionalProperties": false
+    }
+  }
+}
