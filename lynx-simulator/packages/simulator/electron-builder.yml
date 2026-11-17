@@ -1,0 +1,49 @@
+productName: Lynx Simulator
+appId: com.lynx.simulator
+directories:
+  buildResources: resources
+  output: dist
+  app: dist/desktop
+files:
+  - index.js
+  - '**/*.lynx.bundle'
+  - '**/*.js'
+  - '**/*.css'
+  - '**/*.html'
+  - '**/*.json'
+  - '**/*.jsn'
+  - '**/*.png'
+  - '**/*.exe'
+asar: true
+asarUnpack:
+  - statics/
+npmRebuild: false
+extraResources:
+  - from: src/assets
+    to: assets
+  - from: dist/desktop
+    to: resources/app
+icon: lynx-simulator.png
+electronBranding:
+  projectName: lynxtron
+  productName: Lynxtron
+mac:
+  icon: lynx-simulator.icns
+  artifactName: LynxSimulator-v${version}-darwin-${arch}.${ext}
+  extendInfo:
+    CFBundleURLSchemes:
+      - LynxSimulator
+  identity: null
+win:
+  icon: lynx-simulator.ico
+  target:
+    - target: nsis
+      arch: x64
+  artifactName: LynxSimulator-v${version}-win-x64.${ext}
+nsis:
+  artifactName: LynxSimulator-v${version}-win-x64-Setup.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
