@@ -1,0 +1,7 @@
+node_modules
+dist
+output/
+*.log
+
+# Keep the lockfile even when a parent repository ignores pnpm-lock.yaml.
+!pnpm-lock.yaml

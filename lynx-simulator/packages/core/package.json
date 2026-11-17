@@ -1,0 +1,59 @@
+{
+  "name": "@lynx-js/lynx-simulator-core",
+  "version": "0.0.0",
+  "description": "Core SDK for Lynx desktop simulator applications.",
+  "license": "Apache-2.0",
+  "author": "The Lynx Authors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx-devtool.git",
+    "directory": "lynx-simulator/packages/core"
+  },
+  "keywords": [
+    "lynx",
+    "lynxtron",
+    "simulator"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@lynx-js/lynxtron": ">=0.0.31"
+  },
+  "peerDependenciesMeta": {
+    "@lynx-js/lynxtron": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "rspack build --config rspack.config.mjs && tsc -p tsconfig.types.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@lynx-js/lynxtron": "0.0.31",
+    "@rspack/cli": "2.2.9",
+    "@rspack/core": "2.2.9",
+    "@types/node": "^25.9.1",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "templateData": {
+    "title": "Example page"
+  },
+  "globalProps": {
+    "theme": "light"
+  },
+  "jsb": {
+    "bridge": [
+      {
+        "name": "x.request",
+        "params": {
+          "data": {
+            "url": "https://example.com/api/items",
+            "method": "GET"
+          }
+        },
+        "delayMs": 1000,
+        "result": {
+          "code": 1,
+          "msg": "",
+          "data": {
+            "httpCode": 200,
+            "response": {
+              "message": "Matched request parameters"
+            }
+          }
+        }
+      },
+      {
+        "name": "x.request",
+        "result": {
+          "code": 1,
+          "msg": "",
+          "data": {
+            "httpCode": 200,
+            "response": {
+              "message": "Fallback response"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
