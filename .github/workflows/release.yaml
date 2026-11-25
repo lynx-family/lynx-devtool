@@ -338,7 +338,7 @@ jobs:
         uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1
         with:
           repository: lynx-family/lynx-trace
-          latest: true
+          tag: v50.1-ui.alpha.1
           fileName: "perfetto-ui-*.tar.gz"
           out-file-path: temp-lynx-trace
           token: ${{ secrets.GITHUB_TOKEN }}
