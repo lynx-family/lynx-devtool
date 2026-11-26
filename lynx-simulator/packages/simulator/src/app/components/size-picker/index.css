@@ -1,0 +1,514 @@
+.OverlayBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  z-index: 25;
+}
+
+.OverlayBackdrop--light {
+  background-color: transparent;
+}
+
+.OverlayBackdrop--dark {
+  background-color: transparent;
+}
+
+.SizePicker {
+  position: relative;
+  display: flex;
+  width: 100%;
+  z-index: 30;
+  margin-bottom: 14px;
+  flex-direction: column;
+}
+
+.SizePicker--light {
+  background-color: #ffffff;
+}
+
+.SizePicker--dark {
+  background-color: #101318;
+}
+
+.SizeTrigger {
+  display: flex;
+  width: 100%;
+  height: 42px;
+  padding-left: 12px;
+  padding-right: 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-width: 1px;
+  border-radius: 6px;
+}
+
+.SizeTrigger--light {
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+}
+
+.SizeTrigger--dark {
+  border-color: #394150;
+  background-color: #191f29;
+}
+
+.SizeTriggerText {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.SizeTriggerText--light {
+  color: #111827;
+}
+
+.SizeTriggerText--dark {
+  color: #f9fafb;
+}
+
+.SizeTriggerIcon {
+  width: 18px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.SizeTriggerIcon--light {
+  color: #6b7280;
+}
+
+.SizeTriggerIcon--dark {
+  color: #9ca3af;
+}
+
+.SizeOverlay {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  display: flex;
+  width: 100%;
+  height: 42vh;
+  z-index: 30;
+  border-width: 1px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.SizeOverlay--light {
+  border-color: #e5e7eb;
+  background-color: #ffffff;
+}
+
+.SizeOverlay--dark {
+  border-color: #394150;
+  background-color: #151a22;
+}
+
+.SizeOverlayScroll {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+}
+
+.SizeOverlayScroll--light {
+  background-color: #ffffff;
+}
+
+.SizeOverlayScroll--dark {
+  background-color: #151a22;
+}
+
+.SizeOverlayContent {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.SizeOverlayContent--light {
+  background-color: #ffffff;
+}
+
+.SizeOverlayContent--dark {
+  background-color: #151a22;
+}
+
+.CustomOverlayBackdrop {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  display: flex;
+  width: 100%;
+  height: 42vh;
+  z-index: 35;
+}
+
+.CustomOverlayBackdrop--light {
+  background-color: transparent;
+}
+
+.CustomOverlayBackdrop--dark {
+  background-color: transparent;
+}
+
+.SizeSectionTitle {
+  padding: 10px 12px 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.SizeSectionTitle--light {
+  color: #6b7280;
+}
+
+.SizeSectionTitle--dark {
+  color: #9ca3af;
+}
+
+.SizeSeparator {
+  display: flex;
+  width: 100%;
+  height: 1px;
+}
+
+.SizeSeparator--light {
+  background-color: #f3f4f6;
+}
+
+.SizeSeparator--dark {
+  background-color: #273142;
+}
+
+.SizeOption {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.SizeOption--light {
+  background-color: #ffffff;
+}
+
+.SizeOption--dark {
+  background-color: #151a22;
+}
+
+.SizeOption--selected {
+  background-color: #f3f4f6;
+}
+
+.SizeOption--dark.SizeOption--selected {
+  background-color: #202734;
+}
+
+.SizeOptionMark {
+  width: 18px;
+  margin-top: 1px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.SizeOptionMark--light {
+  color: #ff351a;
+}
+
+.SizeOptionMark--dark {
+  color: #ff6448;
+}
+
+.SizeOptionBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.SizeOptionBody--light {
+  background-color: transparent;
+}
+
+.SizeOptionBody--dark {
+  background-color: transparent;
+}
+
+.SizeOptionTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.SizeOptionTitle--light {
+  color: #111827;
+}
+
+.SizeOptionTitle--dark {
+  color: #f9fafb;
+}
+
+.SizeOptionMeta {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.SizeOptionMeta--light {
+  color: #6b7280;
+}
+
+.SizeOptionMeta--dark {
+  color: #9ca3af;
+}
+
+.AddCustomOption {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 12px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.AddCustomOption--light {
+  background-color: #ffffff;
+}
+
+.AddCustomOption--dark {
+  background-color: #151a22;
+}
+
+.AddCustomIcon {
+  width: 18px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.AddCustomIcon--light {
+  color: #ff351a;
+}
+
+.AddCustomIcon--dark {
+  color: #ff6448;
+}
+
+.AddCustomText {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.AddCustomText--light {
+  color: #ff351a;
+}
+
+.AddCustomText--dark {
+  color: #ff6448;
+}
+
+.CustomOverlay {
+  position: absolute;
+  top: 56px;
+  left: 172px;
+  display: flex;
+  width: 340px;
+  height: calc(42vh - 16px);
+  z-index: 40;
+  border-width: 1px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.CustomOverlay--light {
+  border-color: #e5e7eb;
+  background-color: #ffffff;
+}
+
+.CustomOverlay--dark {
+  border-color: #394150;
+  background-color: #151a22;
+}
+
+.CustomOverlayScroll {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.CustomOverlayScroll--light {
+  background-color: #ffffff;
+}
+
+.CustomOverlayScroll--dark {
+  background-color: #151a22;
+}
+
+.CustomOverlayContent {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.CustomOverlayContent--light {
+  background-color: #ffffff;
+}
+
+.CustomOverlayContent--dark {
+  background-color: #151a22;
+}
+
+.CustomFieldLabel {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.CustomFieldLabel--light {
+  color: #111827;
+}
+
+.CustomFieldLabel--dark {
+  color: #f9fafb;
+}
+
+.CustomInput {
+  width: 100%;
+  height: 38px;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-bottom: 16px;
+  border-width: 1px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.CustomInput--light {
+  border-color: #e5e7eb;
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.CustomInput--dark {
+  border-color: #394150;
+  background-color: #191f29;
+  color: #f9fafb;
+}
+
+.CustomDeleteButton {
+  display: flex;
+  width: 54px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+}
+
+.CustomDeleteButton--light {
+  background-color: #f3f4f6;
+}
+
+.CustomDeleteButton--dark {
+  background-color: #273142;
+}
+
+.CustomDeleteText {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.CustomDeleteText--light {
+  color: #6b7280;
+}
+
+.CustomDeleteText--dark {
+  color: #d1d5db;
+}
+
+.CustomDimensionRow {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+}
+
+.CustomDimensionRow--light {
+  background-color: transparent;
+}
+
+.CustomDimensionRow--dark {
+  background-color: transparent;
+}
+
+.CustomDimensionField {
+  display: flex;
+  flex: 1;
+  margin-right: 10px;
+  flex-direction: column;
+}
+
+.CustomDimensionField--light {
+  background-color: transparent;
+}
+
+.CustomDimensionField--dark {
+  background-color: transparent;
+}
+
+.CustomErrorBox {
+  display: flex;
+  width: 100%;
+  margin-bottom: 12px;
+  border-width: 1px;
+  border-radius: 6px;
+}
+
+.CustomErrorBox--light {
+  border-color: #fecaca;
+  background-color: #fef2f2;
+}
+
+.CustomErrorBox--dark {
+  border-color: #7f1d1d;
+  background-color: #2a161a;
+}
+
+.CustomErrorText {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.CustomErrorText--light {
+  color: #dc2626;
+}
+
+.CustomErrorText--dark {
+  color: #fca5a5;
+}
+
+.CustomConfirmButton {
+  display: flex;
+  width: 64px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.CustomConfirmButton--light {
+  background-color: #f3f4f6;
+}
+
+.CustomConfirmButton--dark {
+  background-color: #273142;
+}
+
+.CustomConfirmText {
+  color: #0b63f6;
+  font-size: 14px;
+  font-weight: 700;
+}

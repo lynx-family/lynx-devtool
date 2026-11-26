@@ -1,0 +1,19 @@
+{
+  "name": "lynx-simulator-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Workspace for the Lynx desktop simulator SDK and app.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build:core": "pnpm --filter @lynx-js/lynx-simulator-core run build",
+    "build": "pnpm run build:core && pnpm --filter @lynx-js/lynx-simulator run build",
+    "typecheck": "pnpm run build:core && pnpm --filter @lynx-js/lynx-simulator-core run typecheck && pnpm --filter @lynx-js/lynx-simulator run typecheck",
+    "test": "pnpm --filter @lynx-js/lynx-simulator-core run test && pnpm --filter @lynx-js/lynx-simulator run test && pnpm --filter @lynx-js/lynx-simulator run test:cli",
+    "dev": "pnpm run build:core && pnpm --filter @lynx-js/lynx-simulator run dev",
+    "start": "pnpm run build:core && pnpm --filter @lynx-js/lynx-simulator run start"
+  }
+}

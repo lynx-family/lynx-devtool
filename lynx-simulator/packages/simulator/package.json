@@ -1,0 +1,84 @@
+{
+  "name": "@lynx-js/lynx-simulator",
+  "version": "0.0.0",
+  "description": "Lynx desktop simulator application and CLI built with Lynxtron.",
+  "license": "Apache-2.0",
+  "author": "The Lynx Authors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx-devtool.git",
+    "directory": "lynx-simulator/packages/simulator"
+  },
+  "keywords": [
+    "lynx",
+    "lynxtron",
+    "simulator"
+  ],
+  "type": "module",
+  "main": "main.js",
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "bin",
+    "dist/cli",
+    "dist/desktop",
+    "resources"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "dev": "cross-env TARGET_ENV=desktop NODE_ENV=development concurrently -k --prefix none \"node scripts/rspeedy.mjs dev\" \"dev-ready-rspeedy && rspack dev\"",
+    "dev:web": "cross-env TARGET_ENV=web NODE_ENV=development concurrently -k --prefix node \"node scripts/rspeedy.mjs dev\" \"rspack serve\"",
+    "build": "npm run build:desktop && npm run build:cli",
+    "build:desktop": "npm run build:ui && cross-env TARGET_ENV=desktop rspack build",
+    "build:cli": "cross-env TARGET_ENV=cli rspack build",
+    "build:web": "cross-env TARGET_ENV=web node scripts/rspeedy.mjs build && cross-env TARGET_ENV=web rspack build",
+    "start": "npm run build:desktop && lynxtron dist/desktop --",
+    "start:web": "npm run build:web && npx serve dist/web",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.tools.json --noEmit && tsc -p src/app/tsconfig.json --noEmit && tsc -p src/main/desktop/tsconfig.json --noEmit && tsc -p src/cli/tsconfig.json --noEmit",
+    "test:cli": "npm run build:cli && node --test test/cli/smoke.mjs",
+    "pack": "npm run build && npm pack --dry-run",
+    "pack:app": "npm run build:desktop && lynxtron-builder --publish never",
+    "open": "npm run build:desktop && lynxtron dist/desktop -- open",
+    "build:ui": "cross-env TARGET_ENV=desktop node scripts/rspeedy.mjs build"
+  },
+  "devDependencies": {
+    "@lynx-js/lynx-core": "0.1.4",
+    "@lynx-js/lynxtron-builder": "0.0.30",
+    "@lynx-js/lynxtron-dev-plugins": "0.0.30",
+    "@lynx-js/preact-devtools": "^5.0.1-c0c936b",
+    "@lynx-js/react": "0.129.2",
+    "@lynx-js/react-rsbuild-plugin": "0.22.2",
+    "@lynx-js/rspeedy": "0.18.5",
+    "@lynx-js/types": "4.4.2",
+    "@lynx-js/web-core": "0.26.8",
+    "@lynx-js/web-elements": "0.12.18",
+    "@rspack/cli": "2.2.9",
+    "@rspack/core": "2.2.9",
+    "@rspack/dev-server": "2.2.2",
+    "@testing-library/jest-dom": "^6.9.0",
+    "@types/node": "^25.9.1",
+    "background-only": "0.0.1",
+    "compressing": "^1.10.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "jsdom": "^26.1.0",
+    "typescript": "~5.9.3",
+    "vite-node": "^3.2.4",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "lynx-simulator": "./bin/lynx-simulator.js"
+  },
+  "dependencies": {
+    "@lynx-js/lynx-simulator-core": "0.0.0",
+    "@lynx-js/lynxtron": "0.0.31"
+  }
+}
