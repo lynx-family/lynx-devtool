@@ -76,8 +76,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
-        with:
-          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
@@ -166,8 +164,6 @@ jobs:
     
     steps:
       - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3
-        with:
-          submodules: recursive
 
       - name: ln Python
         run: ln -s `which python3` /usr/local/bin/python
@@ -215,8 +211,17 @@ jobs:
       - name: Sync DevTools Frontend
         run: pnpm run sync:devtools-dist
 
-      - name: Build lynx-trace
-        run: pnpm run build:lynx-trace
+      - name: Download lynx-trace prebuilt artifact
+        uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1
+        with:
+          repository: lynx-family/lynx-trace
+          latest: true
+          fileName: "perfetto-ui-*.tar.gz"
+          out-file-path: temp-lynx-trace
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy lynx-trace to resources
+        run: mv temp-lynx-trace/perfetto-ui-*.tar.gz packages/lynx-devtool-cli/resources/lynx-trace.tar.gz
 
       - name: Build all packages
         run: pnpm run build:all
