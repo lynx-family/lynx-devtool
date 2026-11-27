@@ -19,7 +19,7 @@ import {
 let tempDirectory;
 let runtime;
 let manager;
-const target = 'https://example.com/template.js';
+const target = 'https://example.com/main.lynx.bundle';
 
 beforeEach(() => {
   tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'lynx-simulator-page-env-runtime-'));
@@ -486,6 +486,120 @@ describe('JavaScript page environments', () => {
   });
 });
 
+describe('page environment resource callbacks', () => {
+  const request = {
+    nativeWindowId: 101,
+    url: 'https://example.com/cover.png',
+    scheme: 'https',
+    resourceType: 'Image',
+  };
+
+  test('isolates async factory state and passes resource and page context', async () => {
+    const logs = [];
+    configure({ onDispatch: (event, payload) => logs.push({ event, payload }) });
+    const source = writeModule(`export default () => {
+      let calls = 0;
+      return { fetchResource: async (request, { source, cwd, target, window, context }) =>
+        Buffer.from(JSON.stringify({ request, source, cwd, target,
+          windowId: window.id, label: context.label, calls: ++calls })) };
+    };`);
+    const first = await manager.open({
+      target,
+      pageEnvironment: source,
+      context: { label: 'first' },
+    });
+    const second = await manager.open({
+      target,
+      pageEnvironment: source,
+      context: { label: 'second' },
+    });
+    const firstResult = JSON.parse(await runtime.fetchResource(request, first));
+    assert.deepEqual(firstResult, {
+      request,
+      source: pathToFileURL(source).href,
+      cwd: process.cwd(),
+      target,
+      windowId: first.id,
+      label: 'first',
+      calls: 1,
+    });
+    const secondRequest = { ...request, nativeWindowId: 102 };
+    assert.deepEqual(JSON.parse(await runtime.fetchResource(secondRequest, second)), {
+      ...firstResult,
+      request: secondRequest,
+      windowId: second.id,
+      label: 'second',
+    });
+    assert.equal(JSON.parse(await runtime.fetchResource(request, first)).calls, 2);
+    assert.deepEqual(logs[0], {
+      event: 'resource-mock',
+      payload: { ...request, simulatorWindowId: first.id },
+    });
+  });
+
+  test('delegates through next but not for explicit undefined or failures', async (t) => {
+    const logs = [];
+    configure({ onDispatch: (event, payload) => logs.push({ event, payload }) });
+    const host = t.mock.fn(async () => Buffer.from('host'));
+    const source = writeModule(`export default () => ({
+      fetchResource: async ({ url }, { next }) => {
+        if (url.endsWith('/empty')) return undefined;
+        if (url.endsWith('/fail')) throw new Error('resource rejected');
+        return next();
+      },
+    });`);
+    const page = await manager.open({ target, pageEnvironment: source, onFetchResource: host });
+    assert.equal((await runtime.fetchResource(request, page)).toString(), 'host');
+    assert.equal(host.mock.calls[0].arguments[0], request);
+    assert.equal(host.mock.calls[0].arguments[1].window.id, page.id);
+    assert.equal(
+      await runtime.fetchResource({ ...request, url: `${target}/empty` }, page),
+      undefined
+    );
+    const failedRequest = { ...request, url: `${target}/fail` };
+    await assert.rejects(runtime.fetchResource(failedRequest, page), /resource rejected/);
+    assert.equal(host.mock.calls.length, 1);
+    assert.deepEqual(logs.at(-1), {
+      event: 'resource-error',
+      payload: {
+        ...failedRequest,
+        simulatorWindowId: page.id,
+        message: 'Error: resource rejected',
+      },
+    });
+    const withoutHost = await manager.open({ target, pageEnvironment: source });
+    assert.equal(await runtime.fetchResource(request, withoutHost), undefined);
+    const hostOnly = await manager.open({ target, onFetchResource: host });
+    assert.equal((await runtime.fetchResource(request, hostOnly)).toString(), 'host');
+  });
+
+  for (const cleanup of ['close', 'fail', 'dispose']) {
+    test(`releases resource factory state on ${cleanup}`, async () => {
+      const source = writeModule(
+        `export default () => ({ fetchResource: () => Buffer.from('mock') });`
+      );
+      const page = await manager.open({
+        target,
+        pageEnvironment: source,
+        onFetchResource: () => Buffer.from('host'),
+      });
+      assert.equal((await runtime.fetchResource(request, page)).toString(), 'mock');
+      if (cleanup === 'close') await page.close();
+      else if (cleanup === 'fail') runtime.fail(page);
+      else manager.dispose();
+      assert.equal((await runtime.fetchResource(request, page)).toString(), 'host');
+    });
+  }
+
+  test('rejects non-function resource rules before opening a window', async () => {
+    await assert.rejects(
+      openEnvironment({ fetchResource: {} }),
+      /fetchResource must be a function/
+    );
+    assert.equal(runtime.windows.size, 0);
+  });
+});
+
 function writeModule(code, name = 'page-env.mjs') {
   const source = path.join(tempDirectory, name);
   fs.writeFileSync(source, code);
@@ -517,6 +631,19 @@ function createRuntimeMock() {
     addWindowEventListener(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    fail(page) {
+      const { info } = windows.get(page.id);
+      info.status = 'failed';
+      for (const listener of listeners) listener({ type: 'failed', window: info });
+    },
+    async fetchResource(request, page) {
+      const record = windows.get(page.id);
+      return record.options.onFetchResource?.(request, {
+        window: record.info,
+        context: record.options.context,
+        next: () => undefined,
+      });
     },
     async open(options) {
       const id = `win_${windows.size + 1}`;

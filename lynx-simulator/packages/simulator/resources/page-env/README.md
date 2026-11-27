@@ -1,6 +1,6 @@
 # Page Environment Guide
 
-Page environment files provide data and JSB responses to a Lynx page. Pass a
+Page environment files provide data, JSB responses, and resource mocks to a Lynx page. Pass a
 JSON file or a local JavaScript factory module with `open --page-env`.
 
 ## Generate
@@ -80,3 +80,44 @@ For advanced usage, see the annotated [examples/advanced.mjs](./examples/advance
 
 Use a local `.mjs` file, or an ESM `.js` file in a package with `"type": "module"`.
 File URLs are also supported; HTTP(S) sources remain JSON.
+
+## Resource mocks
+
+A JavaScript page environment can provide `fetchResource(request, context)`
+to replace HTTP(S) or file resource bytes:
+
+```js
+import { readFile } from 'node:fs/promises';
+
+export default () => ({
+  fetchResource: async ({ url }, { next }) => {
+    if (url === 'https://example.com/cover.png') {
+      return readFile(new URL('./cover.png', import.meta.url));
+    }
+    return next();
+  },
+});
+```
+
+The request contains `url`, `scheme`, `resourceType`, and the numeric
+`nativeWindowId` from Lynxtron. `context.window.id` is the separate string ID
+owned by Simulator. Each opened page gets its own callback and factory state.
+
+Return a Buffer/Uint8Array to replace bytes. `next()` delegates to the host's
+resource callback if present, otherwise selects the native loader; returning
+`undefined` directly selects the native loader. `next()` does not download bytes.
+Thrown errors, rejected promises, and invalid return values fail the resource
+request instead of silently fetching live data.
+
+Try the self-contained [examples/resources.mjs](./examples/resources.mjs), which
+returns a PNG for `https://example.com/cover.png` and logs both window IDs:
+
+```sh
+lynx-simulator open /absolute/path/main.lynx.bundle --page-env ./examples/resources.mjs
+```
+
+The page must request that image URL. The host must provide window ownership on
+protocol requests; requests without it use the native loader. Local main
+templates (paths or `file://` URLs) continue to use the host's `loadFile`; which
+loads enter the protocol pipeline depends on the host. Native cache hits bypass
+callbacks. JSON resource rules are not supported.

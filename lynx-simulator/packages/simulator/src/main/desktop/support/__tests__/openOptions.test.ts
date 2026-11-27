@@ -9,8 +9,8 @@ import { getOpenDeviceScaleFactor, getOpenPageTarget, resolveOpenSize } from '..
 
 describe('open options', () => {
   test('extracts open page target', () => {
-    expect(getOpenPageTarget({ target: 'https://example.com/template.js' })).toBe(
-      'https://example.com/template.js'
+    expect(getOpenPageTarget({ target: 'https://example.com/main.lynx.bundle' })).toBe(
+      'https://example.com/main.lynx.bundle'
     );
     expect(getOpenPageTarget({ target: '' })).toBeUndefined();
     expect(getOpenPageTarget({})).toBeUndefined();

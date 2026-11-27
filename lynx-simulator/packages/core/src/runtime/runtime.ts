@@ -16,6 +16,7 @@ import type {
   JSBHandler,
   JSBHandlerRegistration,
   JSBInvokeHandler,
+  ResourceRequest,
   SimulatorDevToolSettingsOptions,
   SimulatorDevTool,
   SimulatorLynxOptions,
@@ -46,7 +47,7 @@ interface LynxWindowLoadEvents {
   once(event: typeof LOAD_SUCCESS_EVENT, listener: () => void): this;
   once(
     event: typeof LOAD_ERROR_EVENT,
-    listener: (event: unknown, code: unknown, message: unknown) => void
+    listener: (event: unknown, errorType: unknown, code: unknown, message: unknown) => void
   ): this;
 }
 
@@ -83,10 +84,57 @@ const DEFAULT_SIZE = Object.freeze({ width: 390, height: 844 });
 const DEFAULT_WINDOW_TITLE = 'Lynx Simulator';
 const DEFAULT_DEVTOOL_SETTINGS_TITLE = 'DevTool Settings';
 const LOAD_SUCCESS_EVENT = 'ready-to-show';
-const LOAD_ERROR_EVENT = '--lynx-error';
+const LOAD_ERROR_EVENT = 'receive-lynx-window-error';
 const BRIDGE_INVOKE_EVENT = '-lynx-invoke';
 
 let windowSeq = 0;
+
+const resourceSchemes = ['http', 'https', 'file'];
+const resourceHandlers = new Map<
+  number,
+  (request: ResourceRequest) => Promise<Lynxtron.ResourceResponse | undefined>
+>();
+
+function registerResourceHandler(
+  protocol: Lynxtron.Protocol,
+  nativeWindowId: number,
+  handler: (request: ResourceRequest) => Promise<Lynxtron.ResourceResponse | undefined>
+): Unsubscribe {
+  if (resourceHandlers.size === 0) {
+    for (const scheme of resourceSchemes) {
+      if (protocol.isProtocolHandled(scheme)) {
+        throw runtimeError(
+          SimulatorErrorCodes.RuntimeLoadFailed,
+          `Cannot enable resource mocks: protocol ${scheme} already has a handler.`
+        );
+      }
+    }
+    for (const scheme of resourceSchemes) {
+      // Host declarations may omit window ownership and async native fallback.
+      protocol.handle(scheme, ((request: Lynxtron.ResourceRequest & { windowId?: number }) => {
+        if (request.windowId === undefined) {
+          // Requests without an owning window cannot be routed to a page.
+          // Leave them to the native loader instead of failing unrelated loads.
+          return undefined;
+        }
+        const resourceRequest: ResourceRequest = {
+          nativeWindowId: request.windowId,
+          url: request.url,
+          scheme: request.scheme,
+          resourceType: request.resourceType,
+        };
+        return resourceHandlers.get(request.windowId)?.(resourceRequest);
+      }) as Lynxtron.ProtocolHandler);
+    }
+  }
+  resourceHandlers.set(nativeWindowId, handler);
+  return () => {
+    resourceHandlers.delete(nativeWindowId);
+    if (resourceHandlers.size === 0) {
+      for (const scheme of resourceSchemes) protocol.unhandle(scheme);
+    }
+  };
+}
 
 export function createSimulatorRuntime(options: SimulatorRuntimeOptions = {}): SimulatorRuntime {
   return new SimulatorRuntimeImpl(options);
@@ -155,7 +203,7 @@ class SimulatorRuntimeImpl implements SimulatorRuntime {
       validateDeviceScaleFactor(options.window.deviceScaleFactor, 'runtime.open');
     }
 
-    const { LynxWindow } = await this.#getLynxtron();
+    const { LynxWindow, protocol } = await this.#getLynxtron();
     const id = createWindowId();
     const windowOptions: Lynxtron.LynxWindowConstructorOptions = {
       width: size.width,
@@ -195,19 +243,24 @@ class SimulatorRuntimeImpl implements SimulatorRuntime {
     };
     this.#windows.set(id, record);
     this.#emitWindowEvent('created', record);
+    let releaseResources: Unsubscribe | undefined;
 
     const windowWithLoadEvents = win as LynxWindow & LynxWindowLoadEvents;
     windowWithLoadEvents.once(LOAD_SUCCESS_EVENT, () => {
+      if (record.status !== 'loading') return;
       this.#updateWindow(id, { status: 'ready', error: undefined });
       this.#emitWindowEvent('ready', this.#windows.get(id));
     });
 
-    windowWithLoadEvents.once(LOAD_ERROR_EVENT, (_event, code, message) => {
+    windowWithLoadEvents.once(LOAD_ERROR_EVENT, (_event, errorType, code, message) => {
+      if (record.status === 'closed') return;
+      releaseResources?.();
+      releaseResources = undefined;
       const error: SimulatorErrorInfo = {
         module: 'runtime',
         code: SimulatorErrorCodes.RuntimeLoadFailed,
         message: String(message),
-        details: { lynxCode: String(code) },
+        details: { errorType: String(errorType), lynxCode: String(code) },
       };
       this.#updateWindow(id, { status: 'failed', error });
       this.#emitWindowEvent('failed', this.#windows.get(id));
@@ -233,6 +286,8 @@ class SimulatorRuntimeImpl implements SimulatorRuntime {
     });
 
     win.on('closed', () => {
+      releaseResources?.();
+      releaseResources = undefined;
       this.#updateWindow(id, {
         status: 'closed',
         lynxWindow: undefined,
@@ -246,8 +301,43 @@ class SimulatorRuntimeImpl implements SimulatorRuntime {
 
     this.#registerBridgeListener(id, win);
 
+    if (options.onFetchResource) {
+      const fetchResource = options.onFetchResource;
+      try {
+        releaseResources = registerResourceHandler(protocol, win.id, async (request) => {
+          try {
+            const data = await fetchResource(request, {
+              window: this.#toWindowInfo(record),
+              context: record.context,
+              next: () => undefined,
+            });
+            if (record.status === 'closed' || record.status === 'failed') {
+              throw new Error('Resource owner is no longer active.');
+            }
+            if (data === undefined) return undefined;
+            if (!(data instanceof Uint8Array))
+              throw new TypeError('Resource mocks must return Uint8Array or undefined.');
+            return { url: request.url, statusCode: 0, data: Buffer.from(data) };
+          } catch (error) {
+            // A broken mock must fail the request instead of fetching live data.
+            const errorResponse = {
+              url: request.url,
+              statusCode: -1,
+              errorMessage: String(error),
+              data: Buffer.alloc(0),
+            };
+            return errorResponse;
+          }
+        });
+      } catch (error) {
+        win.close();
+        throw error;
+      }
+    }
     const loadError = loadResolvedTarget(win, loadTargetInfo, options.lynxOptions);
     if (loadError) {
+      releaseResources?.();
+      releaseResources = undefined;
       this.#updateWindow(id, { status: 'failed', error: loadError });
       this.#emitWindowEvent('failed', this.#windows.get(id));
     }

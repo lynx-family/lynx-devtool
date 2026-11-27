@@ -118,6 +118,45 @@ Each open calls the factory again; put per-page state inside that factory.
 Modules and their relative imports follow Node's normal ESM cache and resolution.
 JavaScript sources must be local files; HTTP(S) sources remain JSON.
 
+### Resource callbacks
+
+JavaScript page environments can replace resource bytes with `fetchResource`:
+
+```js
+import { readFile } from 'node:fs/promises';
+
+export default () => ({
+  fetchResource: async ({ url, resourceType }, { next }) => {
+    if (resourceType === 'Image' && url === 'https://example.com/cover.png') {
+      return readFile(new URL('./fixtures/cover.png', import.meta.url));
+    }
+    return next();
+  },
+});
+```
+
+The request contains `nativeWindowId`, `url`, `scheme`, and `resourceType`.
+`nativeWindowId` is the numeric Lynxtron window ID; `context.window.id` is the
+separate string ID owned by Simulator. Context also includes the factory's
+source, working directory, target, and host context.
+
+Return a Buffer/Uint8Array to replace bytes, or `undefined` to select the native
+loader. `next()` delegates to the host's `open.onFetchResource`, if present;
+otherwise it selects the native loader without downloading bytes. Throws,
+rejected promises, and invalid results fail that resource request. JSON resource
+rules and relative-URL resolution are not supported.
+
+The host must provide window ownership on protocol requests. Requests without
+an owning window or matching callback fall back to native loading. Core owns
+the `http`, `https`, and `file` protocol handlers while resource-enabled windows
+are active, and rejects existing registrations instead of replacing them.
+Native cache hits bypass callbacks.
+
+Local main templates, including `file://` targets, continue to use `loadFile`.
+This feature adds no separate main-template interception path; the host decides
+which loads enter its protocol pipeline. Resources requested by the page can
+be mocked independently of how the main template was loaded.
+
 ## Local Development
 
 From the `lynx-simulator` workspace root:
