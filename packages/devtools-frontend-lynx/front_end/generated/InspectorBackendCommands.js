@@ -480,6 +480,8 @@ export function registerCommands(inspectorBackend) {
   inspectorBackend.registerCommand(
       'CSS.getStyleSheetText', [{'name': 'styleSheetId', 'type': 'string', 'optional': false}], ['text']);
   inspectorBackend.registerCommand(
+      'CSS.getLayersForNode', [{'name': 'nodeId', 'type': 'number', 'optional': false}], ['rootLayer']);
+  inspectorBackend.registerCommand(
       'CSS.trackComputedStyleUpdates', [{'name': 'propertiesToTrack', 'type': 'object', 'optional': false}], []);
   inspectorBackend.registerCommand('CSS.takeComputedStyleUpdates', [], ['nodeIds']);
   inspectorBackend.registerCommand(

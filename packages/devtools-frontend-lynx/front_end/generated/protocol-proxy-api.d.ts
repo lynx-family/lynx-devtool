@@ -610,6 +610,12 @@ declare namespace ProtocolProxyApi {
         Promise<Protocol.CSS.GetStyleSheetTextResponse>;
 
     /**
+     * Returns all layers parsed by the rendering engine for the tree scope of a node.
+     */
+    invoke_getLayersForNode(params: Protocol.CSS.GetLayersForNodeRequest):
+        Promise<Protocol.CSS.GetLayersForNodeResponse>;
+
+    /**
      * Starts tracking the given computed styles for updates. The specified array of properties
      * replaces the one previously specified. Pass empty array to disable tracking.
      * Use takeComputedStyleUpdates to retrieve the list of nodes that had properties modified.
