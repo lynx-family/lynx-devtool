@@ -105,7 +105,6 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
       switch (event.data.type) {
         // Initialize data, dynamic plugin configuration
         case 'iframe_init':
-          console.log('iframe init', event);
           sendGenericMessageToIframe('inject_data', {
             info: info?.info ?? {},
             plugins: plugins ?? []
@@ -113,7 +112,6 @@ export const DevTool: React.FC<IDevToolProps> = (props: IDevToolProps) => {
           break;
         // Compatible with webview inspector interface
         case 'iframe_loaded':
-          console.log('iframe loaded', event);
           lynxOpen();
           break;
         // Call lynx communication interface to forward messages

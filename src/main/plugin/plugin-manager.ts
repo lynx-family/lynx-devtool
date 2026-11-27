@@ -11,6 +11,7 @@ import {
   PLUGIN_EVENT_CUSTOM_EVENT_RESPONSE,
   PLUGIN_EVENT_ENV_LOG,
   PLUGIN_EVENT_GET_ALL_PLUGINS,
+  PLUGIN_EVENT_GET_PLATFORM_PLUGINS,
   PLUGIN_EVENT_MODAL_SHOW,
   PLUGIN_EVENT_PLUGIN_CHANGED,
   PLUGIN_EVENT_PLUGIN_CREATED,
@@ -27,10 +28,34 @@ import { LDT_DIR } from '../utils/const';
 import { EnvLogManager } from '@lynx-js/lynx-devtool-cli';
 import { EnvLogClient } from '@lynx-js/lynx-devtool-cli/src/types/envLog';
 import fs from 'fs';
+import ldtServer from '../utils/server';
 
-const {meta} = require('virtualModules');
+const { meta } = require('virtualModules');
 
 const INTERNAL_MAIN_PLUGINS = meta;
+
+type PlatformPluginMeta = {
+  _id: string;
+  name: string;
+  type: string;
+  location: string;
+  description: string;
+  url: string;
+  path: string;
+  disable: boolean;
+  visible: boolean;
+  isValid: string;
+  /**
+   * Plugin grouping field
+   * Plugins with the same group will be merged into one entry, with name as the navigation bar name
+   * Used to satisfy cases where multiple plugins want to share one entry (such as Lynx's TestBench, Trace, etc.)
+   * groupId must be globally unique
+   * groupName will be used as the main entry name for the plugin group
+   */
+  groupId?: string;
+  groupName?: string;
+};
+
 type PluginMeta = {
   id: string;
   name: string;
@@ -56,6 +81,7 @@ const PLUGIN_MANAGER_GLOBAL_NAME = 'PLUGIN_MANAGER_GLOBAL_NAME';
 
 export default class PluginManager {
   plugins: PluginMeta[];
+  platformPlugins: PluginMeta[];
   installOptions: any;
   private win: BrowserWindow | null = null;
   private context: MainContext & { window: BrowserWindow | null };
@@ -106,6 +132,9 @@ export default class PluginManager {
     });
     ipcMain.handle(PLUGIN_EVENT_GET_ALL_PLUGINS, () => {
       return this.context.plugin;
+    });
+    ipcMain.handle(PLUGIN_EVENT_GET_PLATFORM_PLUGINS, () => {
+      return this.platformPlugins;
     });
     ipcMain.handle(PLUGIN_EVENT_CUSTOM_EVENT_RESPONSE, (_, { id, data }) => {
       const { resolve, timer } = this.customEventResponseMap.get(id) ?? {};
@@ -181,7 +210,43 @@ export default class PluginManager {
         }
       })
       .filter((plugin) => plugin !== null);
-    this.plugins = [...internalPlugins, ...externalPlugins].filter((plugin) => plugin.visible);
+
+    const platformPlugins = externalPluginsMeta
+      // @ts-ignore
+      .map((plugin) => {
+        try {
+          const pluginPath = plugin.path;
+          const isPlatformPlugin = this.isPlatformPlugin(plugin);
+
+          if (isPlatformPlugin) {
+            const platformPluginPath = path.join(pluginPath, plugin.platformPlugin.entry);
+            return {
+              _id: plugin.name,
+              id: plugin.name,
+              name: plugin.name,
+              type: 'lynx',
+              location: 'panel',
+              description: plugin.description,
+              url: `http://${ldtServer.getHost()}/plugins/${plugin.platformPlugin.entry}`,
+              path: platformPluginPath,
+              disable: plugin.disable ?? false,
+              visible: plugin.visible ?? true,
+              valid: true,
+              mode: 'radio',
+              hasView: false,
+              plugin: {},  // required
+              platformPlugin: plugin.platformPlugin
+            }
+          }
+
+        } catch (e) {
+          console.error('collect plugin error: ', e);
+          return null;
+        }
+      })
+      .filter((plugin) => plugin !== null);
+    this.platformPlugins = platformPlugins;
+    this.plugins = [...internalPlugins, ...externalPlugins, ...platformPlugins].filter((plugin) => plugin.visible);
   }
   install(options) {
     this.installOptions = options;
@@ -197,7 +262,6 @@ export default class PluginManager {
       },
       storage: ldtConfig,
       window: this.win,
-      // simulator: ,
       mobile: {
         usbManager
       },
@@ -288,10 +352,10 @@ export default class PluginManager {
         }
       }
     }
-          return Promise.reject(new Error(`Method ${methodName} does not exist`));
+    return Promise.reject(new Error(`Method ${methodName} does not exist`));
   }
 
-      // Main process sends events to renderer process
+  // Main process sends events to renderer process
   publishPluginEvent(event: PluginEvent) {
     if (!this.renderInitialized) {
       this.cacheCustemEvents.push(event);
@@ -320,5 +384,9 @@ export default class PluginManager {
       return false;
     }
     return true;
+  }
+
+  isPlatformPlugin(plugin) {
+    return plugin.platformPlugin !== undefined;
   }
 }
