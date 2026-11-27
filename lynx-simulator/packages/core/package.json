@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/lynx-simulator-core",
-  "version": "0.0.0",
+  "version": "0.0.10",
   "description": "Core SDK for Lynx desktop simulator applications.",
   "license": "Apache-2.0",
   "author": "The Lynx Authors",

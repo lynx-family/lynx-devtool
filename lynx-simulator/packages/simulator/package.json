@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/lynx-simulator",
-  "version": "0.0.0",
+  "version": "0.0.12",
   "description": "Lynx desktop simulator application and CLI built with Lynxtron.",
   "license": "Apache-2.0",
   "author": "The Lynx Authors",
@@ -78,7 +78,7 @@
     "lynx-simulator": "./bin/lynx-simulator.js"
   },
   "dependencies": {
-    "@lynx-js/lynx-simulator-core": "0.0.0",
+    "@lynx-js/lynx-simulator-core": "0.0.10",
     "@lynx-js/lynxtron": "0.0.31"
   }
 }
