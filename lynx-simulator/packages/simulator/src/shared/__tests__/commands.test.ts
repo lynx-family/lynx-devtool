@@ -10,18 +10,18 @@ describe('createSimulatorCommandParser', () => {
   test('parses simulator-specific open options', () => {
     const parser = createSimulatorCommandParser();
 
-    expect(parser.parse(['open', 'https://example.com/template.js'])).toEqual({
+    expect(parser.parse(['open', 'https://example.com/main.lynx.bundle'])).toEqual({
       command: 'open',
       args: {
-        target: 'https://example.com/template.js',
+        target: 'https://example.com/main.lynx.bundle',
       },
       options: {},
-      rawArgv: ['open', 'https://example.com/template.js'],
+      rawArgv: ['open', 'https://example.com/main.lynx.bundle'],
     });
     expect(
       parser.parse([
         'open',
-        'https://example.com/template.js',
+        'https://example.com/main.lynx.bundle',
         '--instance',
         'sim_123',
         '--page-env',
@@ -32,7 +32,7 @@ describe('createSimulatorCommandParser', () => {
     ).toMatchObject({
       command: 'open',
       args: {
-        target: 'https://example.com/template.js',
+        target: 'https://example.com/main.lynx.bundle',
       },
       options: {
         instance: 'sim_123',
@@ -43,7 +43,7 @@ describe('createSimulatorCommandParser', () => {
     expect(
       parser.parse([
         'open',
-        'https://example.com/template.js',
+        'https://example.com/main.lynx.bundle',
         '--window',
         'win_123',
         '--instance',

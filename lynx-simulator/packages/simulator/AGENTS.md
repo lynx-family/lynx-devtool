@@ -39,6 +39,6 @@ For desktop main-process validation, follow `src/main/desktop/AGENTS.md`.
 - Put page scenario fixtures under `test/fixtures/cases/<case-name>`.
 - Use `recorder.json` with `generated-page-env.expected.json` for page-env
   generation tests.
-- Use `template.js` with `page-env.json` for page-open or UI smoke tests.
+- Use `main.lynx.bundle` with `page-env.json` for page-open or UI smoke tests.
 - Do not rely on real Lynxtron windows in unit tests; use separate smoke or
   integration checks for real app startup.

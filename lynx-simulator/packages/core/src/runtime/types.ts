@@ -71,7 +71,27 @@ export interface SimulatorOpenOptions {
   context?: Record<string, unknown>;
   /** Intercepts this window's bridge calls before named handlers. */
   onJSBInvoke?: JSBInvokeHandler;
+  /** Intercepts this window's resources before the native loader. */
+  onFetchResource?: ResourceFetchHandler;
 }
+
+export interface ResourceRequest {
+  /** Native Lynxtron LynxWindow.id; absent for requests without a window. */
+  nativeWindowId?: number;
+  url: string;
+  scheme: string;
+  resourceType: string;
+}
+
+export interface ResourceFetchContext extends JSBHandlerContext {
+  /** Return this value to delegate to the native loader; it does not fetch bytes. */
+  next(): undefined;
+}
+
+export type ResourceFetchHandler = (
+  request: ResourceRequest,
+  context: ResourceFetchContext
+) => Uint8Array | undefined | Promise<Uint8Array | undefined>;
 
 export type SimulatorWindowStatus = 'loading' | 'ready' | 'failed' | 'closed';
 export type SimulatorWindowEventType =

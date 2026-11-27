@@ -11,6 +11,8 @@ import type {
   JSBHandlerRegistration,
   JSBInvokeContext,
   JSBInvokeHandler,
+  ResourceFetchContext,
+  ResourceRequest,
   SimulatorLynxOptions,
   SimulatorRuntime,
   SimulatorOpenOptions,
@@ -28,6 +30,7 @@ export interface PageEnvironment {
   templateData?: Record<string, unknown>;
   globalProps?: Record<string, unknown>;
   jsb?: { bridge?: BridgeMock[] } | PageEnvironmentJSBHandler;
+  fetchResource?: PageEnvironmentResourceHandler;
 }
 
 export interface PageEnvironmentContext {
@@ -40,6 +43,16 @@ export interface PageEnvironmentContext {
 }
 
 export interface PageEnvironmentJSBContext extends PageEnvironmentContext, JSBInvokeContext {}
+
+export interface PageEnvironmentResourceContext
+  extends PageEnvironmentContext, Omit<ResourceFetchContext, 'next'> {
+  next(): Uint8Array | undefined | Promise<Uint8Array | undefined>;
+}
+
+export type PageEnvironmentResourceHandler = (
+  request: ResourceRequest,
+  context: PageEnvironmentResourceContext
+) => Uint8Array | undefined | Promise<Uint8Array | undefined>;
 
 export type PageEnvironmentJSBHandler = (
   name: string,
@@ -79,7 +92,10 @@ interface LoadedPageEnvironment {
 export interface PageEnvironmentManagerOptions {
   runtime: SimulatorRuntime;
   realHandlers?: JSBHandlerRegistration[];
-  onDispatch?: (event: 'jsb-mock' | 'jsb-real', payload: Record<string, unknown>) => void;
+  onDispatch?: (
+    event: 'jsb-mock' | 'jsb-real' | 'resource-mock' | 'resource-error',
+    payload: Record<string, unknown>
+  ) => void;
 }
 
 export interface PageEnvironmentOpenOptions extends SimulatorOpenOptions {
@@ -152,6 +168,37 @@ async function open(
             context: { ...openOptions.context, [PAGE_ENVIRONMENT_ID_KEY]: loaded.id },
             ...(typeof loaded.data.jsb === 'function'
               ? { onJSBInvoke: createInvokeHandler(state, loaded.id, openOptions.onJSBInvoke) }
+              : {}),
+            ...(loaded.data.fetchResource
+              ? {
+                  onFetchResource: async (
+                    request: ResourceRequest,
+                    context: ResourceFetchContext
+                  ) => {
+                    const current = state.environments.get(loaded.id);
+                    const next = () =>
+                      openOptions.onFetchResource?.(request, context) ?? context.next();
+                    if (!current?.data.fetchResource) return next();
+                    try {
+                      state.onDispatch?.('resource-mock', {
+                        ...request,
+                        simulatorWindowId: context.window.id,
+                      });
+                      return await current.data.fetchResource(request, {
+                        ...current.context,
+                        ...context,
+                        next,
+                      });
+                    } catch (error) {
+                      state.onDispatch?.('resource-error', {
+                        ...request,
+                        simulatorWindowId: context.window.id,
+                        message: String(error),
+                      });
+                      throw error;
+                    }
+                  },
+                }
               : {}),
           }
         : {}),
@@ -411,6 +458,12 @@ function validatePageEnvironment(pageEnvironment: PageEnvironment): void {
   }
   if (pageEnvironment.globalProps !== undefined && !isRecord(pageEnvironment.globalProps)) {
     throw new Error('pageEnvironment.globalProps must be an object.');
+  }
+  if (
+    pageEnvironment.fetchResource !== undefined &&
+    typeof pageEnvironment.fetchResource !== 'function'
+  ) {
+    throw new Error('pageEnvironment.fetchResource must be a function.');
   }
   const jsb = pageEnvironment.jsb;
   if (jsb !== undefined && typeof jsb !== 'function' && !isRecord(jsb)) {
