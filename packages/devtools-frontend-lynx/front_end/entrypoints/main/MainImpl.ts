@@ -58,6 +58,7 @@ import * as Components from '../../ui/legacy/components/utils/utils.js';
 import * as UI from '../../ui/legacy/legacy.js';
 import * as ThemeSupport from '../../ui/legacy/theme_support/theme_support.js';
 
+import {CodexContextButtonController} from './CodexContextButton.js';
 import {ExecutionContextSelector} from './ExecutionContextSelector.js';
 
 const UIStrings = {
@@ -556,6 +557,7 @@ export class MainImpl {
     // It is important to kick controller lifetime after apps are instantiated.
     UI.DockController.DockController.instance().initialize();
     app.presentUI(document);
+    CodexContextButtonController.instance();
 
     const toggleSearchNodeAction = UI.ActionRegistry.ActionRegistry.instance().action('elements.toggle-element-search');
     // TODO: we should not access actions from other modules.
