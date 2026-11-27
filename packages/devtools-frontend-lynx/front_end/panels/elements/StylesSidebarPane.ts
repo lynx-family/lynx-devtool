@@ -58,6 +58,7 @@ import {linkifyDeferredNodeReference} from './DOMLinkifier.js';
 import {ElementsPanel} from './ElementsPanel.js';
 import {ElementsSidebarPane} from './ElementsSidebarPane.js';
 import {ImagePreviewPopover} from './ImagePreviewPopover.js';
+import * as LayersWidget from './LayersWidget.js';
 import {StyleEditorWidget} from './StyleEditorWidget.js';
 import {StylePropertyHighlighter} from './StylePropertyHighlighter.js';
 
@@ -163,6 +164,14 @@ const UIStrings = {
   *@description Tooltip text that appears when hovering over the largeicon add button in the Styles Sidebar Pane of the Elements panel
   */
   newStyleRule: 'New Style Rule',
+  /**
+  *@description Text displayed on layer separators in the Styles sidebar pane
+  */
+  layer: 'Layer',
+  /**
+  *@description Tooltip for a link that reveals a CSS layer in the layer tree
+  */
+  clickToRevealLayer: 'Click to reveal layer in layer tree',
 };
 
 const str_ = i18n.i18n.registerUIStrings('panels/elements/StylesSidebarPane.ts', UIStrings);
@@ -748,9 +757,9 @@ export class StylesSidebarPane extends ElementsSidebarPane {
 
     const nodeLoc = node!._nodeLoc;
     if (nodeLoc) {
-      this._sectionBlocks.unshift(SectionBlock.createOriginalNodeLocBlock(nodeLoc.sourceURL ? nodeLoc.sourceURL : "", nodeLoc.sourceLineNumber, nodeLoc.sourceColumnNumber));
+      this._sectionBlocks.unshift(SectionBlock.createOriginalNodeLocBlock(nodeLoc.sourceURL ? nodeLoc.sourceURL : '', nodeLoc.sourceLineNumber, nodeLoc.sourceColumnNumber));
     }
-    
+
     // Style sections maybe re-created when flexbox editor is activated.
     // With the following code we re-bind the flexbox editor to the new
     // section with the same index as the previous section had.
@@ -828,13 +837,55 @@ export class StylesSidebarPane extends ElementsSidebarPane {
 
     const blocks = [new SectionBlock(null)];
     let lastParentNode: SDK.DOMModel.DOMNode|null = null;
+    let lastLayerKey: string|null = null;
+    let sawLayers = false;
+    const anonymousLayerIds = new WeakMap<SDK.CSSLayer.CSSLayer, number>();
+    let nextAnonymousLayerId = 0;
+
+    const addLayerSeparator = (style: SDK.CSSStyleDeclaration.CSSStyleDeclaration): void => {
+      const parentRule = style.parentRule;
+      if (!(parentRule instanceof SDK.CSSRule.CSSStyleRule)) {
+        return;
+      }
+
+      const layers = parentRule.layers;
+      const layerKey = layers.length ?
+          layers.map(layer => {
+            if (layer.text) {
+              return `named:${layer.text}`;
+            }
+            const range = layer.range;
+            if (range) {
+              return `anonymous:${layer.styleSheetId || ''}:${range.startLine}:${range.startColumn}:${range.endLine}:${
+                  range.endColumn}`;
+            }
+            let anonymousLayerId = anonymousLayerIds.get(layer);
+            if (anonymousLayerId === undefined) {
+              anonymousLayerId = nextAnonymousLayerId++;
+              anonymousLayerIds.set(layer, anonymousLayerId);
+            }
+            return `anonymous-object:${anonymousLayerId}`;
+          }).join('/') :
+          parentRule.origin === Protocol.CSS.StyleSheetOrigin.UserAgent ? 'user-agent' : 'implicit';
+      if ((layers.length || lastLayerKey !== null) && lastLayerKey !== layerKey) {
+        blocks.push(SectionBlock.createLayerBlock(parentRule));
+        sawLayers = true;
+        lastLayerKey = layerKey;
+      }
+    };
+
+    LayersWidget.ButtonProvider.instance().item().setVisible(false);
+
     for (const style of matchedStyles.nodeStyles()) {
       const parentNode = matchedStyles.isInherited(style) ? matchedStyles.nodeForStyle(style) : null;
       if (parentNode && parentNode !== lastParentNode) {
         lastParentNode = parentNode;
         const block = await SectionBlock._createInheritedNodeBlock(lastParentNode);
         blocks.push(block);
+        lastLayerKey = null;
       }
+
+      addLayerSeparator(style);
 
       const lastBlock = blocks[blocks.length - 1];
       if (lastBlock) {
@@ -852,14 +903,17 @@ export class StylesSidebarPane extends ElementsSidebarPane {
     }
     pseudoTypes = pseudoTypes.concat([...keys].sort());
     for (const pseudoType of pseudoTypes) {
-      const block = SectionBlock.createPseudoTypeBlock(pseudoType);
+      blocks.push(SectionBlock.createPseudoTypeBlock(pseudoType));
+      lastLayerKey = null;
+
       for (const style of matchedStyles.pseudoStyles(pseudoType)) {
+        addLayerSeparator(style);
+        const lastBlock = blocks[blocks.length - 1];
         this._idleCallbackManager.schedule(() => {
           const section = new StylePropertiesSection(this, matchedStyles, style);
-          block.sections.push(section);
+          lastBlock.sections.push(section);
         });
       }
-      blocks.push(block);
     }
 
     for (const keyframesRule of matchedStyles.keyframes()) {
@@ -870,6 +924,12 @@ export class StylesSidebarPane extends ElementsSidebarPane {
         });
       }
       blocks.push(block);
+    }
+
+    if (sawLayers) {
+      LayersWidget.ButtonProvider.instance().item().setVisible(true);
+    } else if (LayersWidget.LayersWidget.instance().isShowing()) {
+      ElementsPanel.instance().showToolbarPane(null, LayersWidget.ButtonProvider.instance().item());
     }
 
     await this._idleCallbackManager.awaitDone();
@@ -1109,6 +1169,29 @@ export class SectionBlock {
     return new SectionBlock(separatorElement);
   }
 
+  static createLayerBlock(rule: SDK.CSSRule.CSSStyleRule): SectionBlock {
+    const separatorElement = document.createElement('div');
+    separatorElement.className = 'sidebar-separator layer-separator';
+    UI.UIUtils.createTextChild(separatorElement.createChild('div'), i18nString(UIStrings.layer));
+
+    const layers = rule.layers;
+    if (!layers.length) {
+      const name = rule.origin === Protocol.CSS.StyleSheetOrigin.UserAgent ?
+          '\xa0user\xa0agent\xa0stylesheet' :
+          '\xa0implicit\xa0outer\xa0layer';
+      UI.UIUtils.createTextChild(separatorElement.createChild('div'), name);
+      return new SectionBlock(separatorElement);
+    }
+
+    const layerLink = separatorElement.createChild('button') as HTMLButtonElement;
+    layerLink.className = 'link';
+    layerLink.title = i18nString(UIStrings.clickToRevealLayer);
+    const name = layers.map(layer => SDK.CSSModel.CSSModel.readableLayerName(layer.text)).join('.');
+    layerLink.textContent = name;
+    layerLink.onclick = (): Promise<void> => LayersWidget.LayersWidget.instance().revealLayer(name);
+    return new SectionBlock(separatorElement);
+  }
+
   static createOriginalNodeLocBlock(filename: string, line: number, col: number): SectionBlock {
     const element = document.createElement('div');
     element.className = 'styles-section';
@@ -1134,7 +1217,7 @@ export class SectionBlock {
       const contextMenu = new UI.ContextMenu.ContextMenu(event);
       contextMenu.clipboardSection().appendItem('copy', () => {
         Host.InspectorFrontendHost.InspectorFrontendHostInstance.copyText(fileNameElement.textContent);
-      })
+      });
       contextMenu.show();
     });
     fileElement.appendChild(fileSubtitleElement);

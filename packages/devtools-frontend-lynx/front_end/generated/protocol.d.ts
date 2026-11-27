@@ -1879,6 +1879,11 @@ declare namespace Protocol {
        * The array enumerates @supports at-rules starting with the innermost one, going outwards.
        */
       supports?: CSSSupports[];
+      /**
+       * Cascade layer array. Contains the layer hierarchy that this rule belongs to starting
+       * with the innermost layer and going outwards.
+       */
+      layers?: CSSLayer[];
     }
 
     /**
@@ -2138,6 +2143,42 @@ declare namespace Protocol {
        * Identifier of the stylesheet containing this object (if exists).
        */
       styleSheetId?: StyleSheetId;
+    }
+
+    /**
+     * CSS Layer at-rule descriptor.
+     */
+    export interface CSSLayer {
+      /**
+       * Layer name.
+       */
+      text: string;
+      /**
+       * The associated rule header range in the enclosing stylesheet (if available).
+       */
+      range?: SourceRange;
+      /**
+       * Identifier of the stylesheet containing this object (if exists).
+       */
+      styleSheetId?: StyleSheetId;
+    }
+
+    /**
+     * CSS Layer data.
+     */
+    export interface CSSLayerData {
+      /**
+       * Layer name.
+       */
+      name: string;
+      /**
+       * Direct sub-layers.
+       */
+      subLayers?: CSSLayerData[];
+      /**
+       * Layer order. A higher number has higher priority in the cascade order.
+       */
+      order: number;
     }
 
     /**
@@ -2448,6 +2489,14 @@ declare namespace Protocol {
        * The stylesheet text.
        */
       text: string;
+    }
+
+    export interface GetLayersForNodeRequest {
+      nodeId: DOM.NodeId;
+    }
+
+    export interface GetLayersForNodeResponse extends ProtocolResponseWithError {
+      rootLayer: CSSLayerData;
     }
 
     export interface TrackComputedStyleUpdatesRequest {

@@ -154,6 +154,10 @@ export class CSSModel extends SDKModel {
     return this._sourceMapManager;
   }
 
+  static readableLayerName(text: string): string {
+    return text || '<anonymous>';
+  }
+
   static trimSourceURL(text: string): string {
     let sourceURLIndex = text.lastIndexOf('/*# sourceURL=');
     if (sourceURLIndex === -1) {
@@ -265,6 +269,11 @@ export class CSSModel extends SDKModel {
   async mediaQueriesPromise(): Promise<CSSMedia[]> {
     const {medias} = await this._agent.invoke_getMediaQueries();
     return medias ? CSSMedia.parseMediaArrayPayload(this, medias) : [];
+  }
+
+  async getRootLayer(nodeId: Protocol.DOM.NodeId): Promise<Protocol.CSS.CSSLayerData> {
+    const {rootLayer} = await this._agent.invoke_getLayersForNode({nodeId});
+    return rootLayer;
   }
 
   isEnabled(): boolean {
